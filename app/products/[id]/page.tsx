@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { AddReviewForm } from "@/components/add-review-form";
 import { FavoriteButton } from "@/components/favorite-button";
+import { HelpfulButton } from "@/components/helpful-button";
 import { ProductTabs } from "@/components/product-tabs";
 import { RecordRecentlyViewed } from "@/components/recently-viewed";
 import { getProduct, getReviews } from "@/lib/api/client";
+import { getCurrentUser } from "@/lib/auth";
 import { loadProductTabParams } from "@/lib/search-params";
 
 type Props = PageProps<"/products/[id]">;
@@ -38,13 +41,13 @@ export default function ProductPage({ params, searchParams }: Props) {
 
 async function ProductInfo({ params }: { params: Props["params"] }) {
   const { id } = await params;
-  const product = await getProduct(id);
+  const [product, user] = await Promise.all([getProduct(id), getCurrentUser()]);
   if (!product) notFound();
   return (
     <>
       <RecordRecentlyViewed id={product.id} name={product.name} />
       <h1>
-        {product.name} <FavoriteButton productId={product.id} />
+        {product.name} {user && <FavoriteButton productId={product.id} />}
       </h1>
     </>
   );
@@ -79,14 +82,25 @@ async function TabPanel({
 
   // Nested sub-resource fetch: streams independently of the product info.
   const reviews = await getReviews(id);
-  if (reviews.length === 0) return <p>No reviews yet.</p>;
   return (
-    <ul>
-      {reviews.map((review) => (
-        <li key={review.id}>
-          {review.rating}/5 by {review.author}: {review.body}
-        </li>
-      ))}
-    </ul>
+    <>
+      {reviews.length === 0 ? (
+        <p>No reviews yet.</p>
+      ) : (
+        <ul>
+          {reviews.map((review) => (
+            <li key={review.id}>
+              {review.rating}/5 by {review.author}: {review.body}{" "}
+              <HelpfulButton
+                productId={id}
+                reviewId={review.id}
+                helpful={review.helpful}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+      <AddReviewForm productId={id} />
+    </>
   );
 }

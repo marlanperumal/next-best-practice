@@ -14,6 +14,12 @@ test("filters products via URL state", async ({ page }) => {
   await expect(page.getByRole("link", { name: "USB Microphone" })).toBeVisible();
 });
 
+test("out-of-range page redirects to the last valid page", async ({ page }) => {
+  await page.goto("/products?page=9");
+  await expect(page).toHaveURL(/\/products\?page=3$/);
+  await expect(page.getByText("Page 3 of 3")).toBeVisible();
+});
+
 test("paginates and supports the back button", async ({ page }) => {
   await page.goto("/products");
   await expect(page.getByText("Page 1 of 3")).toBeVisible();

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { delay, products } from "../_service/db";
+import { delay, products, track } from "../_service/db";
 
 export async function GET(request: NextRequest) {
+  track("products");
   await delay();
   const params = request.nextUrl.searchParams;
   const category = params.get("category");

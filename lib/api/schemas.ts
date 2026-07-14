@@ -6,7 +6,6 @@ export const productSchema = z.object({
   category: z.enum(["audio", "video", "gaming"]),
   price: z.number(),
   description: z.string(),
-  favorite: z.boolean(),
 });
 
 export const productListSchema = z.object({
@@ -22,11 +21,23 @@ export const reviewSchema = z.object({
   author: z.string(),
   rating: z.number().min(1).max(5),
   body: z.string(),
+  helpful: z.number(),
 });
 
 export const reviewListSchema = z.array(reviewSchema);
 
+export const userSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export const favoriteSchema = z.object({
+  productId: z.string(),
+  favorite: z.boolean(),
+});
+
 export type Product = z.infer<typeof productSchema>;
 export type ProductList = z.infer<typeof productListSchema>;
 export type Review = z.infer<typeof reviewSchema>;
+export type User = z.infer<typeof userSchema>;
 export type Category = Product["category"];

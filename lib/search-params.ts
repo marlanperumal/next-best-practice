@@ -2,6 +2,7 @@
 // components (useQueryStates) and server components (createLoader).
 import {
   createLoader,
+  createSerializer,
   parseAsInteger,
   parseAsString,
   parseAsStringLiteral,
@@ -16,6 +17,10 @@ export const productListParams = {
 };
 
 export const loadProductListParams = createLoader(productListParams);
+
+// For building URLs server-side (e.g. the out-of-range page redirect);
+// omits values that equal their defaults.
+export const serializeProductListParams = createSerializer(productListParams);
 
 export const tabs = ["details", "reviews"] as const;
 

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Suspense } from "react";
+import { UserMenu } from "@/components/user-menu";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +17,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <NuqsAdapter>
           <header>
             <nav>
-              <Link href="/">Home</Link> <Link href="/products">Products</Link>
+              <Link href="/">Home</Link> <Link href="/products">Products</Link>{" "}
+              <Suspense fallback={null}>
+                <UserMenu />
+              </Suspense>
             </nav>
           </header>
           <main>{children}</main>

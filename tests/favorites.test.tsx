@@ -47,7 +47,7 @@ describe("favorites store", () => {
 
   it("reverts the optimistic update when the mutation fails", async () => {
     server.use(
-      http.patch("http://localhost:3000/api/products/p1", async () => {
+      http.post("http://localhost:3000/api/users/u1/favorites", async () => {
         await delay(50);
         return HttpResponse.json({ error: "boom" }, { status: 500 });
       }),
@@ -64,17 +64,10 @@ describe("favorites store", () => {
 
   it("settles on the last click when toggled rapidly", async () => {
     server.use(
-      http.patch("http://localhost:3000/api/products/p1", async ({ request }) => {
-        const body = (await request.json()) as { favorite: boolean };
+      http.post("http://localhost:3000/api/users/u1/favorites", async ({ request }) => {
+        const body = (await request.json()) as { productId: string; favorite: boolean };
         await delay(150);
-        return HttpResponse.json({
-          id: "p1",
-          name: "Studio Headphones",
-          category: "audio",
-          price: 199,
-          description: "Closed-back.",
-          favorite: body.favorite,
-        });
+        return HttpResponse.json(body);
       }),
     );
     const user = userEvent.setup();

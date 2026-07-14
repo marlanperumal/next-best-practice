@@ -3,13 +3,18 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import {
+  favoriteSchema,
   productListSchema,
   productSchema,
   reviewListSchema,
+  reviewSchema,
+  userSchema,
   type Category,
 } from "./schemas";
 
 const BASE_URL = process.env.EXTERNAL_API_URL ?? "http://localhost:3000/api";
+
+// --- Shared, cacheable-for-everyone data: opts into 'use cache' + tags. ---
 
 export async function getProducts(params: {
   category: Category | null;
@@ -46,19 +51,56 @@ export async function getReviews(productId: string) {
   return reviewListSchema.parse(await res.json());
 }
 
-// Per-user-style data: deliberately uncached, read fresh on every request.
-export async function getFavoriteIds(): Promise<string[]> {
-  const res = await fetch(`${BASE_URL}/favorites`);
-  if (!res.ok) throw new Error(`Favorites failed: ${res.status}`);
+// --- Per-user data: deliberately uncached (a shared cache entry would leak
+// one user's state into another's response). Request-level dedup happens via
+// React.cache in lib/auth.ts, not via the shared cache. ---
+
+export async function getUser(id: string) {
+  const res = await fetch(`${BASE_URL}/users/${id}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`User ${id} failed: ${res.status}`);
+  return userSchema.parse(await res.json());
+}
+
+export async function getFavoriteIds(userId: string): Promise<string[]> {
+  const res = await fetch(`${BASE_URL}/users/${userId}/favorites`);
+  if (!res.ok) throw new Error(`Favorites for ${userId} failed: ${res.status}`);
   return res.json();
 }
 
-export async function patchFavorite(id: string, favorite: boolean) {
-  const res = await fetch(`${BASE_URL}/products/${id}`, {
-    method: "PATCH",
+// --- Mutations, called from Server Actions only. ---
+
+export async function postFavorite(
+  userId: string,
+  productId: string,
+  favorite: boolean,
+) {
+  const res = await fetch(`${BASE_URL}/users/${userId}/favorites`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ favorite }),
+    body: JSON.stringify({ productId, favorite }),
   });
-  if (!res.ok) throw new Error(`Favorite update for ${id} failed: ${res.status}`);
-  return productSchema.parse(await res.json());
+  if (!res.ok) throw new Error(`Favorite update failed: ${res.status}`);
+  return favoriteSchema.parse(await res.json());
+}
+
+export async function postReview(
+  productId: string,
+  review: { author: string; rating: number; body: string },
+) {
+  const res = await fetch(`${BASE_URL}/products/${productId}/reviews`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(review),
+  });
+  if (!res.ok) throw new Error(`Review create failed: ${res.status}`);
+  return reviewSchema.parse(await res.json());
+}
+
+export async function postReviewHelpful(reviewId: string) {
+  const res = await fetch(`${BASE_URL}/reviews/${reviewId}/helpful`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`Helpful vote failed: ${res.status}`);
+  return reviewSchema.parse(await res.json());
 }

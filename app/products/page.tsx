@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { FavoriteButton } from "@/components/favorite-button";
 import { Pagination } from "@/components/pagination";
 import { ProductFilters } from "@/components/product-filters";
 import { RecentlyViewed } from "@/components/recently-viewed";
 import { getProducts } from "@/lib/api/client";
-import { loadProductListParams } from "@/lib/search-params";
+import { getCurrentUser } from "@/lib/auth";
+import {
+  loadProductListParams,
+  serializeProductListParams,
+} from "@/lib/search-params";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -31,7 +36,21 @@ async function ProductList({
   searchParams: PageProps<"/products">["searchParams"];
 }) {
   const { category, q, page } = await loadProductListParams(searchParams);
-  const { items, total, pageSize } = await getProducts({ category, q, page });
+  // Independent reads run in parallel; getCurrentUser is deduped per request
+  // via React.cache, so this costs nothing extra beyond the first caller.
+  const [{ items, total, pageSize }, user] = await Promise.all([
+    getProducts({ category, q, page }),
+    getCurrentUser(),
+  ]);
+
+  // Guard against out-of-range pages (deep link, or a filter shrank the
+  // results): redirect to the last valid page instead of rendering nothing.
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (page > totalPages) {
+    redirect(
+      serializeProductListParams("/products", { category, q, page: totalPages }),
+    );
+  }
 
   if (items.length === 0) return <p>No products found.</p>;
   return (
@@ -40,11 +59,12 @@ async function ProductList({
         {items.map((product) => (
           <li key={product.id}>
             <Link href={`/products/${product.id}`}>{product.name}</Link>{" "}
-            (${product.price}) <FavoriteButton productId={product.id} />
+            (${product.price}){" "}
+            {user && <FavoriteButton productId={product.id} />}
           </li>
         ))}
       </ul>
-      <Pagination totalPages={Math.ceil(total / pageSize)} />
+      <Pagination totalPages={totalPages} />
     </>
   );
 }
