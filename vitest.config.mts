@@ -1,11 +1,11 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [tsconfigPaths(), react()],
+  plugins: [react()],
   resolve: {
+    tsconfigPaths: true,
     alias: {
       // Framework-boundary stubs: these modules only exist inside the Next.js
       // runtime. Everything else (fetch traffic) is mocked by MSW instead.
@@ -18,6 +18,19 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
-    include: ["tests/**/*.test.tsx"],
+    projects: [
+      // Default: real modules end to end, network intercepted by MSW.
+      {
+        extends: true,
+        test: { name: "unit", include: ["tests/*.test.tsx"] },
+      },
+      // Module seam: the "mock" condition swaps "#api/client" for the typed
+      // mock (package.json "imports"). For boundaries MSW can't reach.
+      {
+        extends: true,
+        resolve: { conditions: ["mock"] },
+        test: { name: "seam", include: ["tests/seam/*.test.tsx"] },
+      },
+    ],
   },
 });

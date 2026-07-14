@@ -44,6 +44,12 @@ test("tab state lives in the URL and survives reload", async ({ page }) => {
   await expect(page.getByText("Flat response, great for mixing.")).toBeVisible();
 });
 
+test("unknown product renders the branded not-found page", async ({ page }) => {
+  await page.goto("/products/nope");
+  await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Browse products" })).toBeVisible();
+});
+
 test("recently viewed is client state persisted across reloads", async ({ page }) => {
   await page.goto("/products/p1");
   await expect(page.getByRole("heading", { name: /Studio Headphones/ })).toBeVisible();

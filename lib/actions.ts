@@ -9,7 +9,7 @@ import {
   postRestockRequest,
   postReview,
   postReviewHelpful,
-} from "./api/client";
+} from "#api/client";
 import { getCurrentUser } from "./auth";
 
 // Server Actions are public HTTP endpoints: validate arguments and check

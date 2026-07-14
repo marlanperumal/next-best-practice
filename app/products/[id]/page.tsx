@@ -7,9 +7,9 @@ import { FavoriteButton } from "@/components/favorite-button";
 import { HelpfulButton } from "@/components/helpful-button";
 import { ProductTabs } from "@/components/product-tabs";
 import { RecordRecentlyViewed } from "@/components/recently-viewed";
-import { PendingAutoRefresher } from "@/components/refreshers";
-import { RestockButton } from "@/components/restock-button";
-import { getProduct, getRestockStatus, getReviews } from "@/lib/api/client";
+import { RestockPanel } from "@/components/restock-panel";
+import { ProductInfoSkeleton } from "@/components/skeletons";
+import { getProduct, getReviews } from "#api/client";
 import { getCurrentUser } from "@/lib/auth";
 import { loadProductTabParams } from "@/lib/search-params";
 
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default function ProductPage({ params, searchParams }: Props) {
   return (
     <article>
-      <Suspense fallback={<p>Loading product…</p>}>
+      <Suspense fallback={<ProductInfoSkeleton />}>
         <ProductInfo params={params} />
       </Suspense>
       <Suspense fallback={null}>
@@ -56,29 +56,6 @@ async function ProductInfo({ params }: { params: Props["params"] }) {
       </h1>
     </>
   );
-}
-
-// The background-job pattern: the server renders the job's current state,
-// and only while it is pending renders a capped poller. Polling starts and
-// stops entirely as a function of server state.
-async function RestockPanel({ params }: { params: Props["params"] }) {
-  const { id } = await params;
-  const restock = await getRestockStatus(id);
-  if (!restock) {
-    return (
-      <p>
-        <RestockButton productId={id} />
-      </p>
-    );
-  }
-  if (restock.status === "pending") {
-    return (
-      <p role="status">
-        Restock pending… <PendingAutoRefresher />
-      </p>
-    );
-  }
-  return <p role="status">Restock confirmed.</p>;
 }
 
 async function TabPanel({

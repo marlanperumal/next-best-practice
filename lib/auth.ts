@@ -2,7 +2,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { getUser } from "./api/client";
+import { getUser } from "#api/client";
 
 // React.cache: every layout, page, and component that asks "who is signed
 // in?" shares one cookie read and one upstream lookup per request. Without

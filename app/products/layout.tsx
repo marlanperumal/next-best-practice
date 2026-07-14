@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 import { VisibilityRefetcher } from "@/components/refreshers";
-import { getFavoriteIds } from "@/lib/api/client";
+import { getFavoriteIds } from "#api/client";
 import { getCurrentUser } from "@/lib/auth";
 import { FavoritesStoreProvider } from "@/stores/favorites-store-provider";
 

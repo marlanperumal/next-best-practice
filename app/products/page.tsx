@@ -6,7 +6,8 @@ import { FavoriteButton } from "@/components/favorite-button";
 import { Pagination } from "@/components/pagination";
 import { ProductFilters } from "@/components/product-filters";
 import { RecentlyViewed } from "@/components/recently-viewed";
-import { getProducts } from "@/lib/api/client";
+import { ProductListSkeleton } from "@/components/skeletons";
+import { getProducts } from "#api/client";
 import { getCurrentUser } from "@/lib/auth";
 import {
   loadProductListParams,
@@ -22,7 +23,7 @@ export default function ProductsPage({ searchParams }: PageProps<"/products">) {
     <>
       <h1>Products</h1>
       <ProductFilters />
-      <Suspense fallback={<p>Loading products…</p>}>
+      <Suspense fallback={<ProductListSkeleton />}>
         <ProductList searchParams={searchParams} />
       </Suspense>
       <RecentlyViewed />

@@ -44,6 +44,8 @@ app/
     page.tsx              list: filtering + pagination + redirect guard
     [id]/page.tsx         detail: parallel streamed sections, URL tabs, reviews
     error.tsx             segment error boundary
+  not-found.tsx           branded 404 / notFound() target
+  global-error.tsx        last-resort boundary (root layout errors)
   api/                    the simulated external service (+ /api/stats)
   webhooks/revalidate/    app-owned endpoint for backend-driven invalidation
 cache-handlers/
@@ -330,6 +332,9 @@ restores the state it mutates.
 jsdom; asserting on store internals instead of rendered output; e2e against a
 dev server.
 
+(When the upstream boundary *isn't* interceptable HTTP, the seam moves inward
+— see §16 for the module-seam alternative.)
+
 ### 11. Assorted gotchas demonstrated
 
 - **`params`/`searchParams` are Promises** in Next 16 — always awaited, typed
@@ -424,7 +429,7 @@ tag invalidation has nothing to do; the tool is re-rendering. Three patterns
   uncached-data sibling of `updateTag`.
 - **Capped polling for background jobs:** the server renders
   `PendingAutoRefresher` *only while the job is pending*
-  ([app/products/[id]/page.tsx](app/products/[id]/page.tsx)), so polling
+  ([components/restock-panel.tsx](components/restock-panel.tsx)), so polling
   starts and stops as a function of server state, transition-wrapped so it
   never clobbers in-flight UI, and capped so a stuck job can't poll forever.
 - **`VisibilityRefetcher`** ([app/products/layout.tsx](app/products/layout.tsx)):
@@ -436,6 +441,52 @@ anti-pattern *when tags can do the job in one round trip*. In this regime —
 uncached data, out-of-band writes — refresh **is** the correct tool. Also
 remember `refresh()`/`router.refresh()` re-runs server components but does
 NOT expire `'use cache'` entries; cached reads stay cached.
+
+### 15. Failure and waiting surfaces
+
+The states an app shows when things are missing, broken, or slow are part of
+the design, not leftovers:
+
+- **[app/not-found.tsx](app/not-found.tsx)** — one file turns every
+  `notFound()` call and unmatched URL from Next's unbranded default into a
+  page with a way forward.
+- **[app/global-error.tsx](app/global-error.tsx)** — the last-resort
+  boundary for errors in the root layout itself, which segment `error.tsx`
+  files can't catch. It replaces the whole document, so it renders its own
+  `<html>`/`<body>`; only active in production builds.
+- **Skeletons over spinners** ([components/skeletons.tsx](components/skeletons.tsx)):
+  Suspense fallbacks that mirror the shape of the incoming content, so the
+  layout doesn't jump when data arrives — with `role="status"` and an
+  `aria-label` so the loading state is announced, not just drawn.
+
+### 16. Module-seam mocking, for boundaries the network mock can't reach
+
+The default testing rule here is "mock at the network boundary" (§10) — but
+that assumes the boundary speaks something MSW can intercept. When it
+doesn't (gRPC transports, vendor SDKs, native bindings), the honest seam
+moves inward to the data-layer module. This repo demonstrates the mechanism
+even though its own boundary is HTTP:
+
+- **One seam, declared once:** `package.json` `imports` maps `#api/client`
+  to the real [lib/api/client.ts](lib/api/client.ts) by default, and to
+  [tests/mocks/api-client.mock.ts](tests/mocks/api-client.mock.ts) under the
+  custom `mock` resolve condition. App code imports `#api/client`; nothing
+  else changes.
+- **Two Vitest projects** ([vitest.config.mts](vitest.config.mts)): `unit`
+  (real modules + MSW) and `seam` (adds the `mock` condition). The swap is a
+  resolver concern, not 272 scattered `vi.mock()` calls.
+- **Drift protection:** every export in the mock is typed as
+  `typeof import("@/lib/api/client")["…"]`, so a contract change in the real
+  module breaks the mock at compile time — the classic failure mode of
+  hand-maintained mock modules.
+- [tests/seam/restock-panel.test.tsx](tests/seam/restock-panel.test.tsx)
+  uses it to test an async Server Component by simply awaiting it — viable
+  for components that touch no framework request APIs (the Next docs still
+  recommend e2e beyond that).
+
+**Anti-pattern avoided:** per-test, per-module `vi.mock()`/`jest.mock()`
+sprawl — dozens of ad-hoc stubs that drift independently and let tests pass
+while the real integration is broken.
 
 ## Where to poke around first
 
