@@ -6,6 +6,7 @@ import {
   favoriteSchema,
   productListSchema,
   productSchema,
+  restockSchema,
   reviewListSchema,
   reviewSchema,
   userSchema,
@@ -68,7 +69,24 @@ export async function getFavoriteIds(userId: string): Promise<string[]> {
   return res.json();
 }
 
+// Background-job status: uncached — a job's whole point is that its state
+// changes out-of-band, so every render reads it fresh.
+export async function getRestockStatus(productId: string) {
+  const res = await fetch(`${BASE_URL}/products/${productId}/restock`);
+  if (!res.ok) throw new Error(`Restock status failed: ${res.status}`);
+  const data = await res.json();
+  return data === null ? null : restockSchema.parse(data);
+}
+
 // --- Mutations, called from Server Actions only. ---
+
+export async function postRestockRequest(productId: string) {
+  const res = await fetch(`${BASE_URL}/products/${productId}/restock`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`Restock request failed: ${res.status}`);
+  return restockSchema.parse(await res.json());
+}
 
 export async function postFavorite(
   userId: string,

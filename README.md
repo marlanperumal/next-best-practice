@@ -14,7 +14,7 @@ zod, Vitest + Testing Library + MSW, Playwright.
 pnpm install
 pnpm dev        # app + simulated external API on :3000
 pnpm test       # Vitest integration tests (MSW at the network boundary)
-pnpm e2e        # Playwright: builds and starts a production server on :3001
+pnpm e2e        # Playwright: TWO production instances on :3001/:3002
 pnpm build && pnpm start
 ```
 
@@ -45,6 +45,9 @@ app/
     [id]/page.tsx         detail: parallel streamed sections, URL tabs, reviews
     error.tsx             segment error boundary
   api/                    the simulated external service (+ /api/stats)
+  webhooks/revalidate/    app-owned endpoint for backend-driven invalidation
+cache-handlers/
+  file-handler.cjs        shared 'use cache' handler (multi-instance tags)
 lib/
   auth.ts                 session DAL: cookies() + React.cache
   api/client.ts           server-only data layer ('use cache' + tags)
@@ -145,6 +148,11 @@ cached unless you say so — `fetch` is uncached by default in Next 15+.
 cache-busting hammer (it's rejected outright under `cacheComponents`);
 `router.refresh()` from the client after a mutation when tags can do it in
 one round trip; caching per-user data.
+
+Three extensions of this model live in their own sections: multi-instance
+cache sharing (§12), backend-originated invalidation via webhook (§13), and
+the fully-dynamic regime where `refresh()`/`router.refresh()` *is* the right
+tool (§14).
 
 ### 5. Streaming with Suspense and Partial Prerendering
 
@@ -343,6 +351,92 @@ dev server.
 - **Empty states** are rendered explicitly (`No products found.`,
   `No reviews yet.`) rather than leaving a blank region.
 
+### 12. Scaling `use cache` beyond one instance: a custom cache handler
+
+The built-in cache handler is an in-memory LRU — correct for one server, but
+on a multi-instance deployment (serverless, Cloud Run, k8s replicas) each
+instance has its own cache, and `updateTag` on instance A **never reaches
+instance B**: B serves stale data until its `cacheLife` expires. This is the
+usual justification for abandoning Next's cache for a bespoke external cache.
+
+The alternative: keep `use cache`/tags as the programming model and swap the
+storage via the stable `cacheHandlers` config
+([next.config.ts](next.config.ts)).
+[cache-handlers/file-handler.cjs](cache-handlers/file-handler.cjs) implements
+the `CacheHandler` interface backed by a shared directory — a stand-in for
+Redis with the same coordination contract:
+
+- `updateTags` — the invalidating instance records `{tag → now}` in shared
+  storage;
+- `refreshTags` — called before every request, each instance syncs tag state;
+- `getExpiration` / `get` — entries older than a tag's invalidation timestamp
+  are misses.
+
+[e2e/multi-instance.spec.ts](e2e/multi-instance.spec.ts) proves it end to
+end against **two separate `next start` processes**: warm instance B's
+cache, mutate through instance A (Server Action → `updateTag`), reload B —
+B re-fetches. With the default handler that test fails; B would serve its
+stale entry.
+
+Handler-authoring rules that came straight from the docs and from building
+it: `get` errors must read as misses, never render errors; `get` must await
+an in-flight `set` for the same key; `set` receives a possibly-still-
+streaming entry — await it before storing; write-then-rename so concurrent
+readers never see partial files.
+
+**Gotcha earned the hard way:** Next stamps cache entries from a
+performance-based clock that drifts from the system clock over process
+lifetime (dramatic under WSL2 — ~900ms/minute). Comparing those stamps
+against your own `Date.now()` invalidation timestamps makes entries written
+just before an invalidation look *newer* than it and wrongly survive. A
+handler must normalize everything to one clock (see the `timestamp:` comment
+in `set`).
+
+### 13. Webhook revalidation for backend-originated writes
+
+When another system writes to the data source directly, the app's cache
+doesn't know. [app/webhooks/revalidate/route.ts](app/webhooks/revalidate/route.ts)
+is the app-owned endpoint such a backend calls after writing:
+
+- Authenticated with a shared secret compared via `crypto.timingSafeEqual` —
+  `===` on secrets leaks how much of the string matched.
+- Calls `revalidateTag(tag, { expire: 0 })` — the "expire immediately"
+  profile for webhooks. (`updateTag` is Server-Action-only and throws in
+  route handlers; `revalidateTag(tag, "max")` is stale-while-revalidate and
+  would serve stale one more time.)
+- Deliberately NOT under `/api`, which plays the external service here.
+
+[e2e/webhook.spec.ts](e2e/webhook.spec.ts) walks the full lifecycle: cached
+price → backend writes directly → app provably serves stale → webhook →
+fresh, plus the 401 on a bad secret.
+
+### 14. The fully-dynamic regime: refresh(), background jobs, focus refetch
+
+Some state is uncached *by nature* — job status, per-user data — and for it
+tag invalidation has nothing to do; the tool is re-rendering. Three patterns
+([components/refreshers.tsx](components/refreshers.tsx),
+[e2e/jobs.spec.ts](e2e/jobs.spec.ts)):
+
+- **Read-your-own-writes with `refresh()`:** `requestRestock` in
+  [lib/actions.ts](lib/actions.ts) mutates, then calls `refresh()` (new in
+  Next 16, Server Actions only) — the client router re-renders in the same
+  round trip, showing "pending" with zero client refetch code. This is the
+  uncached-data sibling of `updateTag`.
+- **Capped polling for background jobs:** the server renders
+  `PendingAutoRefresher` *only while the job is pending*
+  ([app/products/[id]/page.tsx](app/products/[id]/page.tsx)), so polling
+  starts and stops as a function of server state, transition-wrapped so it
+  never clobbers in-flight UI, and capped so a stuck job can't poll forever.
+- **`VisibilityRefetcher`** ([app/products/layout.tsx](app/products/layout.tsx)):
+  on returning to the tab, `router.refresh()` inside a transition brings
+  uncached data up to date.
+
+Honesty note: §4 calls client-side `router.refresh()` after a mutation an
+anti-pattern *when tags can do the job in one round trip*. In this regime —
+uncached data, out-of-band writes — refresh **is** the correct tool. Also
+remember `refresh()`/`router.refresh()` re-runs server components but does
+NOT expire `'use cache'` entries; cached reads stay cached.
+
 ## Where to poke around first
 
 1. [stores/favorites-store.ts](stores/favorites-store.ts) — the optimistic
@@ -353,3 +447,6 @@ dev server.
    streaming, URL-driven tabs, and all three optimistic patterns on one page.
 4. [tests/favorites.test.tsx](tests/favorites.test.tsx) — what
    "integration test with mocks only at the boundary" means concretely.
+5. [cache-handlers/file-handler.cjs](cache-handlers/file-handler.cjs) — the
+   entire multi-instance caching story in ~100 lines, proven by
+   [e2e/multi-instance.spec.ts](e2e/multi-instance.spec.ts).

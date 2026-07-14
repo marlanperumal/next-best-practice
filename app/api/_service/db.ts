@@ -52,3 +52,16 @@ export const reviews: Review[] = [
 
 let reviewSeq = 100;
 export const nextReviewId = () => `r${reviewSeq++}`;
+
+// Restock requests simulate slow background work on the external service:
+// a request starts "pending" and self-completes a few seconds later.
+export const restocks: Record<string, { status: "pending" | "confirmed" }> = {};
+
+export function startRestock(productId: string) {
+  const restock = { status: "pending" as const };
+  restocks[productId] = restock;
+  setTimeout(() => {
+    restocks[productId] = { status: "confirmed" };
+  }, 3000);
+  return restock;
+}

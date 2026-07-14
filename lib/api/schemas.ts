@@ -36,6 +36,10 @@ export const favoriteSchema = z.object({
   favorite: z.boolean(),
 });
 
+export const restockSchema = z.object({
+  status: z.enum(["pending", "confirmed"]),
+});
+
 export type Product = z.infer<typeof productSchema>;
 export type ProductList = z.infer<typeof productListSchema>;
 export type Review = z.infer<typeof reviewSchema>;

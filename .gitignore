@@ -43,3 +43,6 @@ next-env.d.ts
 # playwright
 /test-results/
 /playwright-report/
+
+# shared cache handler storage
+/.cache-handler/

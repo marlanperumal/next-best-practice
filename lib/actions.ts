@@ -1,11 +1,12 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import {
   getUser,
   postFavorite,
+  postRestockRequest,
   postReview,
   postReviewHelpful,
 } from "./api/client";
@@ -67,6 +68,15 @@ export async function markReviewHelpful(input: z.infer<typeof helpfulInput>) {
   const { productId, reviewId } = helpfulInput.parse(input);
   await postReviewHelpful(reviewId);
   updateTag(`reviews:${productId}`);
+}
+
+export async function requestRestock(input: { productId: string }) {
+  const productId = z.string().parse(input.productId);
+  await postRestockRequest(productId);
+  // Restock status is uncached, so there is no tag to expire — but the
+  // client router still holds the old RSC payload. refresh() re-renders it
+  // in this same round trip without touching any cached ('use cache') data.
+  refresh();
 }
 
 export async function signInAs(userId: string) {
