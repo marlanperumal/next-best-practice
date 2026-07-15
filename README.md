@@ -11,6 +11,11 @@ Stack: Next.js 16 (Cache Components enabled), React 19, zustand 5, nuqs 2,
 zod, Vitest + Testing Library + MSW, Playwright. A second workspace app,
 [legacy-cache/](legacy-cache/), runs the pre-16 caching model side by side.
 
+New here? Start with the **[guided walkthrough](WALKTHROUGH.md)** — each
+pattern explained with steps to watch it work against the running app, and
+the concrete failure mode when it's skipped. This README is the reference;
+the walkthrough is the tour.
+
 ## Decision table
 
 | You need | Reach for | Where |
