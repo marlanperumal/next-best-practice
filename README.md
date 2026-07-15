@@ -44,8 +44,8 @@ pnpm --filter legacy-cache dev   # the previous-model app on :3100
 
 The "external service" is simulated by route handlers under
 [app/api/](app/api/) backed by in-memory data
-([app/api/_service/db.ts](app/api/_service/db.ts)) with 400ms artificial
-latency. The app only talks to it over HTTP via `EXTERNAL_API_URL`
+([app/api/_service/db.ts](app/api/_service/db.ts)) with artificial latency
+(400ms default so streaming is visible; tests set `SERVICE_LATENCY_MS=50`). The app only talks to it over HTTP via `EXTERNAL_API_URL`
 (default `http://localhost:3000/api`), so it behaves exactly like a third
 party: it has real latency, real mutations, and is mockable at the network
 boundary. `/api/stats` exposes request counts per endpoint family, so cache
@@ -426,11 +426,13 @@ Redis with the same coordination contract:
 - `getExpiration` / `get` — entries older than a tag's invalidation timestamp
   are misses.
 
-[e2e/multi-instance.spec.ts](e2e/multi-instance.spec.ts) proves it end to
-end against **two separate `next start` processes**: warm instance B's
-cache, mutate through instance A (Server Action → `updateTag`), reload B —
-B re-fetches. With the default handler that test fails; B would serve its
-stale entry.
+[e2e/multi-instance.spec.ts](e2e/multi-instance.spec.ts) proves both halves
+end to end against **two separate `next start` processes**: tag propagation
+(warm instance B's cache, mutate through instance A via `updateTag`, reload
+B — B re-fetches; with the default handler B would serve its stale entry)
+and entry sharing (a page warmed on A is a cache hit on B — zero upstream
+requests, measured via the service's hit counters; cache keys are derived
+from the build ID, which both instances share).
 
 Handler-authoring rules that came straight from the docs and from building
 it: `get` errors must read as misses, never render errors; `get` must await
@@ -486,10 +488,12 @@ tag invalidation has nothing to do; the tool is re-rendering. Three patterns
 [e2e/jobs.spec.ts](e2e/jobs.spec.ts)):
 
 - **Read-your-own-writes with `refresh()`:** `requestRestock` in
-  [lib/actions.ts](lib/actions.ts) mutates, then calls `refresh()` (new in
-  Next 16, Server Actions only) — the client router re-renders in the same
-  round trip, showing "pending" with zero client refetch code. This is the
-  uncached-data sibling of `updateTag`.
+  [lib/actions.ts](lib/actions.ts) checks the session, mutates, then calls
+  `refresh()` (new in Next 16, Server Actions only) — the client router
+  re-renders in the same round trip, showing "pending" with zero client
+  refetch code. This is the uncached-data sibling of `updateTag`. Restock
+  state is per-user, like favorites: the panel renders only for a session,
+  and the job is keyed by user on the service.
 - **Capped polling for background jobs:** the server renders
   `PendingAutoRefresher` *only while the job is pending*
   ([components/restock-panel.tsx](components/restock-panel.tsx)), so polling

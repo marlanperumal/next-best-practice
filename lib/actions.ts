@@ -72,7 +72,9 @@ export async function markReviewHelpful(input: z.infer<typeof helpfulInput>) {
 
 export async function requestRestock(input: { productId: string }) {
   const productId = z.string().parse(input.productId);
-  await postRestockRequest(productId);
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not signed in");
+  await postRestockRequest(productId, user.id);
   // Restock status is uncached, so there is no tag to expire — but the
   // client router still holds the old RSC payload. refresh() re-renders it
   // in this same round trip without touching any cached ('use cache') data.

@@ -27,6 +27,7 @@ export default defineConfig({
       EXTERNAL_API_URL: `http://localhost:${PORT}/api`,
       CACHE_HANDLER: "file",
       CACHE_HANDLER_DIR: ".cache-handler-single",
+      SERVICE_LATENCY_MS: "50",
     },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

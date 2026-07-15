@@ -14,7 +14,7 @@ import { RestockPanel } from "@/components/restock-panel";
 // to the same file, so this is the same module instance the component sees —
 // and TypeScript gets the vi.fn types (via "#api/client" it would type
 // against the real module).
-import { getRestockStatus } from "@/tests/mocks/api-client.mock";
+import { getRestockStatus, getUser } from "@/tests/mocks/api-client.mock";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -41,5 +41,11 @@ describe("RestockPanel (module seam)", () => {
     getRestockStatus.mockResolvedValueOnce({ status: "confirmed" });
     render(await RestockPanel({ params }));
     expect(screen.getByRole("status")).toHaveTextContent("Restock confirmed.");
+  });
+
+  it("renders nothing when signed out (restock is per-user)", async () => {
+    getUser.mockResolvedValueOnce(null); // the DAL's user lookup
+    const { container } = render(await RestockPanel({ params }));
+    expect(container).toBeEmptyDOMElement();
   });
 });

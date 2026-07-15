@@ -69,10 +69,12 @@ export async function getFavoriteIds(userId: string): Promise<string[]> {
   return res.json();
 }
 
-// Background-job status: uncached — a job's whole point is that its state
-// changes out-of-band, so every render reads it fresh.
-export async function getRestockStatus(productId: string) {
-  const res = await fetch(`${BASE_URL}/products/${productId}/restock`);
+// Background-job status: per-user AND uncached — a job's whole point is
+// that its state changes out-of-band, so every render reads it fresh.
+export async function getRestockStatus(productId: string, userId: string) {
+  const res = await fetch(
+    `${BASE_URL}/products/${productId}/restock?userId=${userId}`,
+  );
   if (!res.ok) throw new Error(`Restock status failed: ${res.status}`);
   const data = await res.json();
   return data === null ? null : restockSchema.parse(data);
@@ -80,9 +82,11 @@ export async function getRestockStatus(productId: string) {
 
 // --- Mutations, called from Server Actions only. ---
 
-export async function postRestockRequest(productId: string) {
+export async function postRestockRequest(productId: string, userId: string) {
   const res = await fetch(`${BASE_URL}/products/${productId}/restock`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
   });
   if (!res.ok) throw new Error(`Restock request failed: ${res.status}`);
   return restockSchema.parse(await res.json());

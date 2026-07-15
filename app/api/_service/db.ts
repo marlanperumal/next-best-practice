@@ -3,7 +3,9 @@
 // HTTP, never by importing this module.
 import type { Product, Review, User } from "@/lib/api/schemas";
 
-const LATENCY_MS = 400;
+// 400ms by default so streaming and pending states are visible in dev;
+// tests turn it down (see the playwright configs).
+const LATENCY_MS = Number(process.env.SERVICE_LATENCY_MS ?? 400);
 
 export const delay = () => new Promise((r) => setTimeout(r, LATENCY_MS));
 
@@ -55,13 +57,20 @@ export const nextReviewId = () => `r${reviewSeq++}`;
 
 // Restock requests simulate slow background work on the external service:
 // a request starts "pending" and self-completes a few seconds later.
+// Keyed per user — job state is per-user data, like favorites.
 export const restocks: Record<string, { status: "pending" | "confirmed" }> = {};
 
-export function startRestock(productId: string) {
-  const restock = { status: "pending" as const };
-  restocks[productId] = restock;
+const restockKey = (userId: string, productId: string) => `${userId}:${productId}`;
+
+export function getRestock(userId: string, productId: string) {
+  return restocks[restockKey(userId, productId)] ?? null;
+}
+
+export function startRestock(userId: string, productId: string) {
+  const key = restockKey(userId, productId);
+  restocks[key] = { status: "pending" };
   setTimeout(() => {
-    restocks[productId] = { status: "confirmed" };
+    restocks[key] = { status: "confirmed" };
   }, 3000);
-  return restock;
+  return restocks[key];
 }

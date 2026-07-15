@@ -25,3 +25,27 @@ test("updateTag on instance A invalidates instance B's cached entry", async ({
   await page.goto(`${B}/products/p2?tab=reviews`);
   await expect(page.getByText("Great for podcasts.")).toBeVisible();
 });
+
+// Entries — not just tag invalidations — are shared: the cache key is
+// derived from the build ID (both instances run the same build), so an
+// entry written by instance A is a cache HIT on instance B. Verified via
+// the service's hit counters: B's render of a page A already warmed makes
+// zero product requests.
+test("cache entries written by one instance are served by the other", async ({
+  page,
+  request,
+}) => {
+  const readProductHits = async () =>
+    ((await (await request.get(`${A}/api/stats`)).json()).product as number) ?? 0;
+
+  // Warm p11's detail on A (writes the getProduct entry to shared storage).
+  await page.goto(`${A}/products/p11`);
+  await expect(page.getByRole("heading", { name: /Racing Wheel/ })).toBeVisible();
+
+  const before = await readProductHits();
+  await page.goto(`${B}/products/p11`);
+  await expect(page.getByRole("heading", { name: /Racing Wheel/ })).toBeVisible();
+  const after = await readProductHits();
+
+  expect(after - before).toBe(0);
+});

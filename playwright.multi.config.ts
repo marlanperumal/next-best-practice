@@ -10,6 +10,7 @@ const PORT_B = 3003;
 const sharedEnv = {
   CACHE_HANDLER: "file",
   EXTERNAL_API_URL: `http://localhost:${PORT_A}/api`,
+  SERVICE_LATENCY_MS: "50",
 };
 
 export default defineConfig({
