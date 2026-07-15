@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+legacy-cache/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -16,6 +17,7 @@
 # next.js
 /.next/
 /out/
+legacy-cache/.next/
 
 # production
 /build
@@ -46,3 +48,4 @@ next-env.d.ts
 
 # shared cache handler storage
 /.cache-handler/
+/.cache-handler-single/

@@ -1,21 +1,45 @@
 # Next Best Practice
 
-A deliberately minimal Next.js App Router app demonstrating best practices for
-server/client components, caching, per-user data, URL state (nuqs),
-cross-component state (zustand), optimistic mutations, and integration
-testing. Every pattern below links to the code that demonstrates it.
+The team reference for Next.js App Router patterns: server/client
+components, caching, per-user data, URL state (nuqs), cross-component state
+(zustand), optimistic mutations, and integration testing. Every pattern
+links to runnable code, states the anti-pattern it replaces, and is covered
+by a test. When two approaches exist, the sections say which one is the
+default and when the other applies.
 
 Stack: Next.js 16 (Cache Components enabled), React 19, zustand 5, nuqs 2,
-zod, Vitest + Testing Library + MSW, Playwright.
+zod, Vitest + Testing Library + MSW, Playwright. A second workspace app,
+[legacy-cache/](legacy-cache/), runs the pre-16 caching model side by side.
+
+## Decision table
+
+| You need | Reach for | Where |
+| --- | --- | --- |
+| Cache data everyone sees | `'use cache'` + `cacheLife` + `cacheTag` | §4 |
+| Per-user / session reads | uncached fetch + `React.cache` DAL | §3 |
+| Invalidate after your own mutation | `updateTag` in the Server Action | §4 |
+| React to a backend's out-of-band write | webhook → `revalidateTag(tag, { expire: 0 })` | §13 |
+| Read-your-own-writes for uncached data | `refresh()` in the action | §14 |
+| Shareable UI state (filters, tabs, page) | nuqs — the URL is the store | §6 |
+| Cross-page client state that survives navigation | per-request zustand store in a layout | §7–8 |
+| Client-only state | module-level zustand (+ `persist`) | §7 |
+| Single-surface optimistic flip | `useOptimistic` | §8 |
+| Form mutation with validation | `useActionState` + zod in the action | §9 |
+| Deploying more than one instance | shared cache handler | §12 |
+| Working in the pre-16 caching model | the legacy-cache app | [legacy-cache/README](legacy-cache/README.md) |
 
 ## Running it
 
 ```bash
 pnpm install
 pnpm dev        # app + simulated external API on :3000
-pnpm test       # Vitest integration tests (MSW at the network boundary)
-pnpm e2e        # Playwright: TWO production instances on :3001/:3002
+pnpm test       # Vitest (unit + seam projects)
+pnpm e2e        # Playwright: one production instance on :3001 (fast default)
+pnpm e2e:multi  # the two-instance shared-cache proof on :3002/:3003
+pnpm e2e:all    # both suites (CI)
 pnpm build && pnpm start
+
+pnpm --filter legacy-cache dev   # the previous-model app on :3100
 ```
 
 The "external service" is simulated by route handlers under
@@ -50,6 +74,7 @@ app/
   webhooks/revalidate/    app-owned endpoint for backend-driven invalidation
 cache-handlers/
   file-handler.cjs        shared 'use cache' handler (multi-instance tags)
+legacy-cache/             workspace app: the pre-16 caching model (own README)
 lib/
   auth.ts                 session DAL: cookies() + React.cache
   api/client.ts           server-only data layer ('use cache' + tags)
@@ -156,6 +181,15 @@ cache sharing (§12), backend-originated invalidation via webhook (§13), and
 the fully-dynamic regime where `refresh()`/`router.refresh()` *is* the right
 tool (§14).
 
+**The previous model, runnable:** `cacheComponents` is a global config, so
+the pre-16 model (per-fetch `next: { revalidate, tags }`, `unstable_cache`,
+segment configs, ISR) can't coexist in this app. It lives as a second
+workspace app instead — [legacy-cache/](legacy-cache/) — same domain, same
+external service, with a pattern-by-pattern mapping table in
+[legacy-cache/README.md](legacy-cache/README.md). Read them together to
+translate between the model most production apps run today and the one this
+reference is built on.
+
 ### 5. Streaming with Suspense and Partial Prerendering
 
 `pnpm build` shows every page as ◐ partial prerender: static shell served
@@ -228,9 +262,21 @@ SSR output. The provider receives its initial state from a server component
 client's first render agree — no hydration mismatch, no flash.
 
 Because the store initializes **once per provider instance**, new server
-props alone won't re-hydrate it. When the *identity* behind the state changes
-(sign-in/out, user switch), the layout remounts the provider with
-`key={user?.id}` — React's idiomatic "reset client state below this point"
+props alone won't reach it — so the provider reconciles explicitly: on every
+server re-render it calls `mergeServer` with the fresh snapshot
+([stores/favorites-store-provider.tsx](stores/favorites-store-provider.tsx)).
+The server wins for settled ids; in-flight optimistic values win until their
+mutation resolves. That's what lets a favorite added "on another device"
+appear on the next `refresh()`/revalidation without ever clobbering a
+pending toggle (both proven: [tests/favorites.test.tsx](tests/favorites.test.tsx),
+[e2e/favorites.spec.ts](e2e/favorites.spec.ts)). One honest caveat lives in
+the code comment: a snapshot that started rendering just before a mutation
+settled can briefly revert it until the next refresh — real apps close that
+gap with per-entity versions from the server.
+
+When the *identity* behind the state changes (sign-in/out, user switch),
+merging isn't enough — the layout remounts the provider with
+`key={user?.id}`, React's idiomatic "reset client state below this point"
 ([e2e/auth.spec.ts](e2e/auth.spec.ts) proves Alice's favorites vanish when
 Bob signs in).
 
@@ -321,11 +367,14 @@ updates**, not implementation details
 **Playwright** ([e2e/](e2e/)) covers what Vitest can't: async server
 components (the Next docs explicitly recommend e2e for these), streaming,
 caching and `updateTag` refresh semantics, `React.cache` dedup (via
-`/api/stats` deltas), and multi-page flows. Tests run against a production
-build **on a dedicated port** so a dev server on :3000 is never silently
-reused ([playwright.config.ts](playwright.config.ts)), serially
-(`workers: 1`) because they share the external service's state, and each test
-restores the state it mutates.
+`/api/stats` deltas), and multi-page flows. Two suites: `pnpm e2e` runs one
+production instance ([playwright.config.ts](playwright.config.ts)) — the
+fast default — and `pnpm e2e:multi` boots the two-instance shared-cache
+pair ([playwright.multi.config.ts](playwright.multi.config.ts)); CI runs
+`e2e:all`. Each config owns dedicated ports so neither a dev server on
+:3000 nor the other suite's servers can be silently reused. Tests run
+serially (`workers: 1`) because they share the external service's state,
+and each test restores the state it mutates.
 
 **Anti-patterns avoided:** mocking zustand/nuqs/fetch-wrappers module-by-module
 (tests that pass while the integration is broken); unit-testing async RSCs in
@@ -389,13 +438,27 @@ an in-flight `set` for the same key; `set` receives a possibly-still-
 streaming entry — await it before storing; write-then-rename so concurrent
 readers never see partial files.
 
+The handler models both invalidation flavors, because a real Redis handler
+must: `updateTag` / `revalidateTag(tag, { expire: 0 })` arrive with no SWR
+window and hard-expire matching entries, while `revalidateTag(tag, "max")`
+opens a stale-while-revalidate window in which `get` serves the old entry
+with `revalidate: -1` — the "serve stale, re-run in the background" signal.
+Unit-tested in [tests/cache-handler.test.ts](tests/cache-handler.test.ts);
+that file is the spec a Redis port has to pass.
+
 **Gotcha earned the hard way:** Next stamps cache entries from a
 performance-based clock that drifts from the system clock over process
 lifetime (dramatic under WSL2 — ~900ms/minute). Comparing those stamps
 against your own `Date.now()` invalidation timestamps makes entries written
 just before an invalidation look *newer* than it and wrongly survive. A
 handler must normalize everything to one clock (see the `timestamp:` comment
-in `set`).
+in `set`). This is not just a custom-handler concern: the **built-in
+in-memory handler exhibits the same failure** here — the single-instance e2e
+suite reproducibly lost a webhook invalidation once the server was about a
+minute old, which is why both e2e configs run on the normalized file handler
+([playwright.config.ts](playwright.config.ts)). The failure signature to
+recognize: invalidations "stop working" only on long-lived processes, only
+for recently written entries, and never reproduce on a fresh server.
 
 ### 13. Webhook revalidation for backend-originated writes
 

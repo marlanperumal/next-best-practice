@@ -10,6 +10,7 @@ export type FavoritesState = {
 
 export type FavoritesActions = {
   toggle: (id: string) => Promise<void>;
+  mergeServer: (serverFavoriteIds: string[]) => void;
 };
 
 export type FavoritesStore = FavoritesState & FavoritesActions;
@@ -29,6 +30,22 @@ export function createFavoritesStore(initialFavoriteIds: string[]) {
   return createStore<FavoritesStore>()((set, get) => ({
     favoriteIds: new Set(initialFavoriteIds),
     pendingIds: new Set(),
+
+    // Reconcile with a fresh server snapshot (the provider calls this on
+    // every server re-render): the server wins for settled ids, in-flight
+    // optimistic values win until their mutation resolves. A snapshot that
+    // started rendering before a mutation settled can still briefly revert
+    // it — the next refresh converges; real apps close that gap with
+    // per-entity versions from the server.
+    mergeServer: (serverFavoriteIds) =>
+      set((state) => {
+        const next = new Set(serverFavoriteIds);
+        for (const id of state.pendingIds) {
+          if (state.favoriteIds.has(id)) next.add(id);
+          else next.delete(id);
+        }
+        return { favoriteIds: next };
+      }),
 
     toggle: async (id) => {
       const next = !get().favoriteIds.has(id);

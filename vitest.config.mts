@@ -22,7 +22,7 @@ export default defineConfig({
       // Default: real modules end to end, network intercepted by MSW.
       {
         extends: true,
-        test: { name: "unit", include: ["tests/*.test.tsx"] },
+        test: { name: "unit", include: ["tests/*.test.{ts,tsx}"] },
       },
       // Module seam: the "mock" condition swaps "#api/client" for the typed
       // mock (package.json "imports"). For boundaries MSW can't reach.

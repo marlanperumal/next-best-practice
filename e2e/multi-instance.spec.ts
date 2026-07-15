@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const A = "http://localhost:3001";
-const B = "http://localhost:3002";
+const A = "http://localhost:3002";
+const B = "http://localhost:3003";
 
 // The reason the shared cache handler exists: with the default in-memory
 // handler, updateTag on instance A would never reach instance B, and B would

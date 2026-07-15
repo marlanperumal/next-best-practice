@@ -39,6 +39,35 @@ test("favorite toggles optimistically and stays consistent across pages", async 
   await expect(detailButton).toHaveAttribute("aria-busy", "false");
 });
 
+test("out-of-band favorite changes converge on the next server render", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/products/p9");
+  await signInAsAlice(page);
+  const detailButton = page
+    .getByRole("heading", { name: /Mechanical Keyboard/ })
+    .getByRole("button");
+  await expect(detailButton).toHaveText("☆ Favorite");
+
+  // "Another device" favorites p9 directly against the external service.
+  await request.post("/api/users/u1/favorites", {
+    data: { productId: "p9", favorite: true },
+  });
+  // The store hasn't seen a server render yet, so nothing changes...
+  await expect(detailButton).toHaveText("☆ Favorite");
+
+  // ...until any server re-render (here the restock action's refresh())
+  // delivers a fresh snapshot, which the provider merges into the store.
+  await page.getByRole("button", { name: "Request restock" }).click();
+  await expect(detailButton).toHaveText("★ Favorited");
+
+  // Restore seed state directly on the service.
+  await request.post("/api/users/u1/favorites", {
+    data: { productId: "p9", favorite: false },
+  });
+});
+
 test("navigating away while a mutation is in flight still lands it", async ({
   page,
 }) => {

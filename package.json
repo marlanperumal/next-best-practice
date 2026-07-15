@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:multi": "playwright test --config playwright.multi.config.ts",
+    "e2e:all": "pnpm e2e && pnpm e2e:multi"
   },
   "dependencies": {
     "next": "16.2.10",

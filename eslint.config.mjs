@@ -18,6 +18,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Workspace app build artifacts:
+    "legacy-cache/.next/**",
+    "legacy-cache/node_modules/**",
+    "legacy-cache/next-env.d.ts",
   ]),
 ]);
 

@@ -1,39 +1,34 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Two production instances sharing one build, one file-backed cache handler,
-// and one external service (instance A hosts the simulated API; B points at
-// it) — the minimal model of a multi-instance deployment. Most tests target
-// A via baseURL; e2e/multi-instance.spec.ts drives both. Dedicated ports so
-// a dev server on :3000 is never collided with or silently reused.
-const PORT_A = 3001;
-const PORT_B = 3002;
-
-const sharedEnv = {
-  CACHE_HANDLER: "file",
-  EXTERNAL_API_URL: `http://localhost:${PORT_A}/api`,
-};
+// Fast default suite: ONE production instance. The multi-instance
+// shared-cache proof lives in playwright.multi.config.ts (`pnpm e2e:multi`);
+// it uses different ports so the two configs can never silently reuse each
+// other's servers. Dedicated ports also mean a dev server on :3000 is never
+// collided with.
+//
+// This suite runs on the file cache handler (own directory) rather than the
+// built-in in-memory one: Next's default handler inherits the clock-drift
+// bug described in README §12 — under WSL2 this exact suite failed its last
+// test once the server was ~a minute old, because invalidations stopped
+// landing on recently written entries. The normalized handler is immune.
+const PORT = 3001;
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "**/multi-instance.spec.ts",
   // Tests mutate shared state in the external service; run serially.
   workers: 1,
-  use: { baseURL: `http://localhost:${PORT_A}` },
+  use: { baseURL: `http://localhost:${PORT}` },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: [
-    {
-      command: `rm -rf .cache-handler && pnpm build && pnpm start --port ${PORT_A}`,
-      url: `http://localhost:${PORT_A}`,
-      env: sharedEnv,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+  webServer: {
+    command: `rm -rf .cache-handler-single && pnpm build && pnpm start --port ${PORT}`,
+    url: `http://localhost:${PORT}`,
+    env: {
+      EXTERNAL_API_URL: `http://localhost:${PORT}/api`,
+      CACHE_HANDLER: "file",
+      CACHE_HANDLER_DIR: ".cache-handler-single",
     },
-    {
-      // Same build, second instance: wait until A is serving (build done).
-      command: `sh -c 'until curl -sf http://localhost:${PORT_A} > /dev/null; do sleep 1; done; pnpm start --port ${PORT_B}'`,
-      url: `http://localhost:${PORT_B}`,
-      env: sharedEnv,
-      reuseExistingServer: !process.env.CI,
-      timeout: 180_000,
-    },
-  ],
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
 });

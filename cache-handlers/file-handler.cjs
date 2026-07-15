@@ -5,25 +5,28 @@
 // Proven by e2e/multi-instance.spec.ts against two `next start` processes.
 //
 // The multi-instance contract (see the "How Revalidation Works" guide):
-// - updateTags: the invalidating instance records {tag -> now} in shared storage
+// - updateTags: the invalidating instance records the invalidation in shared
+//   storage. `durations.expire` distinguishes the two invalidation flavors:
+//   absent/0 = hard expiry now (updateTag, revalidateTag(tag, {expire: 0}));
+//   N seconds = stale-while-revalidate window (revalidateTag(tag, "max")).
 // - refreshTags: called before every request; each instance syncs tag state
-// - getExpiration/get: entries whose timestamp predates a tag's invalidation
-//   timestamp are treated as misses
-//
-// Simplification vs the built-in handler: every invalidation is a hard expiry
-// (a miss). The default handler additionally distinguishes SWR-stale
-// (revalidateTag(tag, "max")) from hard expiry — a miss is always safe.
+// - getExpiration/get: entries written before a tag's `stale` timestamp are
+//   served once with `revalidate: -1` (the "serve stale, revalidate in the
+//   background" signal) until the tag's `expired` timestamp passes, after
+//   which they are hard misses.
 const { createHash } = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
-const DIR = path.join(process.cwd(), ".cache-handler");
+const DIR =
+  process.env.CACHE_HANDLER_DIR ?? path.join(process.cwd(), ".cache-handler");
 const TAGS_FILE = path.join(DIR, "tags.json");
 
 // In-flight sets per key: get() must wait for a pending set() of the same
 // key instead of reporting a miss.
 const pendingSets = new Map();
-let tagTimestamps = new Map();
+// tag -> { stale: ms timestamp, expired: ms timestamp }
+let tagRecords = new Map();
 
 const entryPath = (cacheKey) =>
   path.join(DIR, `${createHash("sha256").update(cacheKey).digest("hex")}.json`);
@@ -43,9 +46,6 @@ async function writeAtomic(file, data) {
   await fs.rename(tmp, file);
 }
 
-const anyTagNewerThan = (tags, timestamp) =>
-  tags.some((tag) => (tagTimestamps.get(tag) ?? 0) > timestamp);
-
 module.exports = {
   async get(cacheKey, softTags) {
     await pendingSets.get(cacheKey);
@@ -53,13 +53,23 @@ module.exports = {
       const { value, ...meta } = JSON.parse(
         await fs.readFile(entryPath(cacheKey), "utf8"),
       );
-      if (Date.now() > meta.timestamp + meta.revalidate * 1000) return undefined;
-      if (anyTagNewerThan([...meta.tags, ...softTags], meta.timestamp)) {
-        return undefined;
+      const now = Date.now();
+      if (now > meta.timestamp + meta.revalidate * 1000) return undefined;
+
+      let serveStale = false;
+      for (const tag of [...meta.tags, ...softTags]) {
+        const record = tagRecords.get(tag);
+        if (!record || meta.timestamp >= record.stale) continue;
+        if (now >= record.expired) return undefined; // hard-expired: miss
+        serveStale = true; // inside the SWR window
       }
+
       const buffer = Buffer.from(value, "base64");
       return {
         ...meta,
+        // revalidate: -1 tells the 'use cache' runtime "serve this, but
+        // re-run the function in the background".
+        revalidate: serveStale ? -1 : meta.revalidate,
         value: new ReadableStream({
           start(controller) {
             controller.enqueue(new Uint8Array(buffer));
@@ -106,20 +116,22 @@ module.exports = {
 
   async refreshTags() {
     // Called before each request: pick up invalidations from other instances.
-    tagTimestamps = await readTagsFile();
+    tagRecords = await readTagsFile();
   },
 
   async getExpiration(tags) {
-    return Math.max(0, ...tags.map((tag) => tagTimestamps.get(tag) ?? 0));
+    // Max `stale` timestamp: flags exactly the entries written before an
+    // invalidation; get() then decides between serve-stale and hard miss.
+    return Math.max(0, ...tags.map((tag) => tagRecords.get(tag)?.stale ?? 0));
   },
 
-  // Second param (durations) intentionally unused: we treat every
-  // invalidation as immediate expiry rather than SWR-stale.
-  async updateTags(tags) {
+  async updateTags(tags, durations) {
     const now = Date.now();
+    const expired =
+      durations?.expire != null ? now + durations.expire * 1000 : now;
     const current = await readTagsFile();
-    for (const tag of tags) current.set(tag, now);
-    tagTimestamps = current;
+    for (const tag of tags) current.set(tag, { stale: now, expired });
+    tagRecords = current;
     await fs.mkdir(DIR, { recursive: true });
     await writeAtomic(TAGS_FILE, JSON.stringify(Object.fromEntries(current)));
   },

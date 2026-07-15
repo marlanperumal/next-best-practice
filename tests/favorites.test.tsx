@@ -10,8 +10,8 @@ import { server } from "./mocks/server";
 
 // Both pages render the same product's button; the shared store must keep
 // them consistent.
-function renderButtons(initialFavoriteIds: string[] = []) {
-  render(
+function buttonsTree(initialFavoriteIds: string[]) {
+  return (
     <FavoritesStoreProvider initialFavoriteIds={initialFavoriteIds}>
       <div data-testid="list-page">
         <FavoriteButton productId="p1" />
@@ -19,10 +19,18 @@ function renderButtons(initialFavoriteIds: string[] = []) {
       <div data-testid="detail-page">
         <FavoriteButton productId="p1" />
       </div>
-    </FavoritesStoreProvider>,
+    </FavoritesStoreProvider>
   );
+}
+
+function renderButtons(initialFavoriteIds: string[] = []) {
+  const { rerender } = render(buttonsTree(initialFavoriteIds));
   const [listButton, detailButton] = screen.getAllByRole("button");
-  return { listButton, detailButton };
+  return {
+    listButton,
+    detailButton,
+    rerenderWithServerState: (ids: string[]) => rerender(buttonsTree(ids)),
+  };
 }
 
 describe("favorites store", () => {
@@ -60,6 +68,36 @@ describe("favorites store", () => {
 
     await waitFor(() => expect(listButton).toHaveAttribute("aria-busy", "false"));
     expect(listButton).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("adopts a fresh server snapshot on re-render (out-of-band change)", () => {
+    const { listButton, rerenderWithServerState } = renderButtons([]);
+    expect(listButton).toHaveAttribute("aria-pressed", "false");
+
+    // e.g. favorited on another device, delivered by a server re-render.
+    rerenderWithServerState(["p1"]);
+    expect(listButton).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("does not let a server snapshot clobber an in-flight optimistic toggle", async () => {
+    server.use(
+      http.post("http://localhost:3000/api/users/u1/favorites", async ({ request }) => {
+        const body = (await request.json()) as { productId: string; favorite: boolean };
+        await delay(150);
+        return HttpResponse.json(body);
+      }),
+    );
+    const user = userEvent.setup();
+    const { listButton, rerenderWithServerState } = renderButtons([]);
+
+    await user.click(listButton); // optimistic ★, mutation in flight
+    // A stale server snapshot arrives while the mutation is pending...
+    rerenderWithServerState([]);
+    // ...but the optimistic value holds.
+    expect(listButton).toHaveAttribute("aria-pressed", "true");
+
+    await waitFor(() => expect(listButton).toHaveAttribute("aria-busy", "false"));
+    expect(listButton).toHaveAttribute("aria-pressed", "true");
   });
 
   it("settles on the last click when toggled rapidly", async () => {
