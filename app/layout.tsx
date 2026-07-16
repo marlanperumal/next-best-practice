@@ -3,6 +3,7 @@ import Link from "next/link";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Suspense } from "react";
 import { UserMenu } from "@/components/user-menu";
+import { WebVitals } from "@/components/web-vitals";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
       <body>
+        <WebVitals />
         <NuqsAdapter>
           <header>
             <nav>

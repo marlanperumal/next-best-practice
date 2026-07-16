@@ -48,7 +48,8 @@ export async function getReviews(productId: string) {
   cacheLife("minutes");
   cacheTag(`reviews:${productId}`);
   const res = await fetch(`${BASE_URL}/products/${productId}/reviews`);
-  if (!res.ok) throw new Error(`Reviews for ${productId} failed: ${res.status}`);
+  if (!res.ok)
+    throw new Error(`Reviews for ${productId} failed: ${res.status}`);
   return reviewListSchema.parse(await res.json());
 }
 

@@ -9,9 +9,15 @@ export default defineConfig({
     alias: {
       // Framework-boundary stubs: these modules only exist inside the Next.js
       // runtime. Everything else (fetch traffic) is mocked by MSW instead.
-      "server-only": fileURLToPath(new URL("./tests/stubs/empty.ts", import.meta.url)),
-      "next/cache": fileURLToPath(new URL("./tests/stubs/next-cache.ts", import.meta.url)),
-      "next/headers": fileURLToPath(new URL("./tests/stubs/next-headers.ts", import.meta.url)),
+      "server-only": fileURLToPath(
+        new URL("./tests/stubs/empty.ts", import.meta.url),
+      ),
+      "next/cache": fileURLToPath(
+        new URL("./tests/stubs/next-cache.ts", import.meta.url),
+      ),
+      "next/headers": fileURLToPath(
+        new URL("./tests/stubs/next-headers.ts", import.meta.url),
+      ),
     },
   },
   test: {

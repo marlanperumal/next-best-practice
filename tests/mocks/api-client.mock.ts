@@ -9,7 +9,13 @@ type Client = typeof import("@/lib/api/client");
 
 export const getProducts = vi.fn<Client["getProducts"]>(async () => ({
   items: [
-    { id: "p1", name: "Studio Headphones", category: "audio", price: 199, description: "Closed-back." },
+    {
+      id: "p1",
+      name: "Studio Headphones",
+      category: "audio",
+      price: 199,
+      description: "Closed-back.",
+    },
   ],
   total: 1,
   page: 1,

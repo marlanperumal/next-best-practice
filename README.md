@@ -18,20 +18,21 @@ the walkthrough is the tour.
 
 ## Decision table
 
-| You need | Reach for | Where |
-| --- | --- | --- |
-| Cache data everyone sees | `'use cache'` + `cacheLife` + `cacheTag` | §4 |
-| Per-user / session reads | uncached fetch + `React.cache` DAL | §3 |
-| Invalidate after your own mutation | `updateTag` in the Server Action | §4 |
-| React to a backend's out-of-band write | webhook → `revalidateTag(tag, { expire: 0 })` | §13 |
-| Read-your-own-writes for uncached data | `refresh()` in the action | §14 |
-| Shareable UI state (filters, tabs, page) | nuqs — the URL is the store | §6 |
-| Cross-page client state that survives navigation | per-request zustand store in a layout | §7–8 |
-| Client-only state | module-level zustand (+ `persist`) | §7 |
-| Single-surface optimistic flip | `useOptimistic` | §8 |
-| Form mutation with validation | `useActionState` + zod in the action | §9 |
-| Deploying more than one instance | shared cache handler | §12 |
-| Working in the pre-16 caching model | the legacy-cache app | [legacy-cache/README](legacy-cache/README.md) |
+| You need                                         | Reach for                                     | Where                                         |
+| ------------------------------------------------ | --------------------------------------------- | --------------------------------------------- |
+| Cache data everyone sees                         | `'use cache'` + `cacheLife` + `cacheTag`      | §4                                            |
+| Per-user / session reads                         | uncached fetch + `React.cache` DAL            | §3                                            |
+| Invalidate after your own mutation               | `updateTag` in the Server Action              | §4                                            |
+| React to a backend's out-of-band write           | webhook → `revalidateTag(tag, { expire: 0 })` | §13                                           |
+| Read-your-own-writes for uncached data           | `refresh()` in the action                     | §14                                           |
+| Shareable UI state (filters, tabs, page)         | nuqs — the URL is the store                   | §6                                            |
+| Cross-page client state that survives navigation | per-request zustand store in a layout         | §7–8                                          |
+| Client-only state                                | module-level zustand (+ `persist`)            | §7                                            |
+| Single-surface optimistic flip                   | `useOptimistic`                               | §8                                            |
+| Form mutation with validation                    | `useActionState` + zod in the action          | §9                                            |
+| Deploying more than one instance                 | shared cache handler                          | §12                                           |
+| Working in the pre-16 caching model              | the legacy-cache app                          | [legacy-cache/README](legacy-cache/README.md) |
+| See why a request was slow / what the cache did  | OTel via `instrumentation.ts`, fetch logging  | §17                                           |
 
 ## Running it
 
@@ -102,7 +103,7 @@ e2e/                      Playwright tests (full flows, async RSCs)
 Pages and layouts are server components; `"use client"` appears only on small
 interactive leaves ([components/favorite-button.tsx](components/favorite-button.tsx),
 [components/product-filters.tsx](components/product-filters.tsx)). Server
-components pass data *down* to client components as props; client components
+components pass data _down_ to client components as props; client components
 never fetch entity data themselves.
 
 [lib/api/client.ts](lib/api/client.ts) and [lib/auth.ts](lib/auth.ts) import
@@ -137,9 +138,9 @@ lookup. The e2e test in [e2e/auth.spec.ts](e2e/auth.spec.ts) proves it via
 
 Two dedup tools, two jobs:
 
-- `'use cache'` — *shared across requests and users*; for data that is the
+- `'use cache'` — _shared across requests and users_; for data that is the
   same for everyone (products, reviews). Dedup across a request comes free.
-- `React.cache` — *scoped to one request*; the only dedup tool for data that
+- `React.cache` — _scoped to one request_; the only dedup tool for data that
   must stay uncached (sessions, per-user reads). Without it, N call sites =
   N upstream requests, silently, on every page.
 
@@ -164,12 +165,12 @@ cached unless you say so — `fetch` is uncached by default in Next 15+.
   `cacheLife("minutes")` + `cacheTag(...)`. The cache key includes the
   function arguments, so each filter/page combination is cached separately.
 - Per-user data (`getUser`, `getFavoriteIds`) stays uncached deliberately.
-- Mutations of *cached* data invalidate by tag: `addReview` and
+- Mutations of _cached_ data invalidate by tag: `addReview` and
   `markReviewHelpful` call `updateTag("reviews:<id>")`. `updateTag` (vs
-  `revalidateTag`) expires *and refreshes within the same request*, giving
+  `revalidateTag`) expires _and refreshes within the same request_, giving
   read-your-own-writes — the action's response already contains the new
   review; no client refetch code exists ([e2e/reviews.spec.ts](e2e/reviews.spec.ts)).
-- Mutations of *uncached* data invalidate nothing: `setFavorite` ends at the
+- Mutations of _uncached_ data invalidate nothing: `setFavorite` ends at the
   external write, because there is no cache entry to expire. Knowing when
   **not** to invalidate is part of the model.
 - `getProduct` is called by both `generateMetadata` and the page in
@@ -183,7 +184,7 @@ one round trip; caching per-user data.
 
 Three extensions of this model live in their own sections: multi-instance
 cache sharing (§12), backend-originated invalidation via webhook (§13), and
-the fully-dynamic regime where `refresh()`/`router.refresh()` *is* the right
+the fully-dynamic regime where `refresh()`/`router.refresh()` _is_ the right
 tool (§14).
 
 **The previous model, runnable:** `cacheComponents` is a global config, so
@@ -201,7 +202,7 @@ reference is built on.
 instantly, dynamic holes streamed.
 
 - [app/products/page.tsx](app/products/page.tsx): the page component stays
-  *synchronous*; only the nested async `ProductList` awaits `searchParams`
+  _synchronous_; only the nested async `ProductList` awaits `searchParams`
   and data. Awaiting `searchParams` at the top of the page would pull the
   whole page — filters included — out of the static shell.
 - [app/products/[id]/page.tsx](app/products/[id]/page.tsx): `ProductInfo` and
@@ -230,7 +231,7 @@ lives in the URL, managed by nuqs — not in `useState`, not in a store.
 
 - One definition, all sides: [lib/search-params.ts](lib/search-params.ts)
   declares the parsers once; client components use them via `useQueryStates`,
-  server components via `createLoader`, and server-side URL *building* goes
+  server components via `createLoader`, and server-side URL _building_ goes
   through `createSerializer`.
 - `shallow: false` re-runs the server components that read the params; the
   update is wrapped in `useTransition` and surfaced as a pending indicator
@@ -247,7 +248,7 @@ lives in the URL, managed by nuqs — not in `useState`, not in a store.
   filters and tabs keep the default `replace` so typing doesn't spam history.
   (Caught by the e2e back-button test — nuqs defaults to `replace`.)
 - Tabs ([components/product-tabs.tsx](components/product-tabs.tsx)) are just a
-  URL param; the *server* decides what the active panel renders in `TabPanel`.
+  URL param; the _server_ decides what the active panel renders in `TabPanel`.
   Deep links and reloads land on the right tab for free.
 
 **Anti-patterns avoided:** tab/filter state in `useState` (lost on reload, not
@@ -257,7 +258,7 @@ side.
 ### 7. Two zustand stores, two lifetimes — and why they differ
 
 **Server-originated ([stores/favorites-store.ts](stores/favorites-store.ts)):**
-follows the zustand Next.js guide. The store is a *factory* (`createStore`
+follows the zustand Next.js guide. The store is a _factory_ (`createStore`
 from `zustand/vanilla`), instantiated once per provider mount inside
 `useState(() => ...)` ([stores/favorites-store-provider.tsx](stores/favorites-store-provider.tsx)),
 and accessed through context. A module-level store here would be shared by
@@ -279,7 +280,7 @@ the code comment: a snapshot that started rendering just before a mutation
 settled can briefly revert it until the next refresh — real apps close that
 gap with per-entity versions from the server.
 
-When the *identity* behind the state changes (sign-in/out, user switch),
+When the _identity_ behind the state changes (sign-in/out, user switch),
 merging isn't enough — the layout remounts the provider with
 `key={user?.id}`, React's idiomatic "reset client state below this point"
 ([e2e/auth.spec.ts](e2e/auth.spec.ts) proves Alice's favorites vanish when
@@ -291,8 +292,8 @@ store is fine — the server never reads it. It uses `persist` with
 `skipHydration: true`: localStorage is only read in an effect after mount
 ([components/recently-viewed.tsx](components/recently-viewed.tsx)), because
 reading it during the first render would make client HTML differ from server
-HTML (the hydration-mismatch gotcha). Hydration completion is tracked *in the
-store* via `onRehydrateStorage`. Known tradeoff: localStorage is per-browser,
+HTML (the hydration-mismatch gotcha). Hydration completion is tracked _in the
+store_ via `onRehydrateStorage`. Known tradeoff: localStorage is per-browser,
 not per-user — state that must follow the user belongs on the server.
 
 ### 8. Optimistic UI: a decision rule, demonstrated three ways
@@ -300,11 +301,11 @@ not per-user — state that must follow the user belongs on the server.
 All three mutations are optimistic or near-optimistic, but they use different
 tools — deliberately. The rule:
 
-| State is… | Tool | Demo |
-|---|---|---|
-| Shared across pages, must survive navigation | store-owned mutation | favorites |
-| Single surface, dies with the component | `useOptimistic` | review "helpful" |
-| Needs the server's answer anyway (new ID) | form action + `updateTag` | add review |
+| State is…                                    | Tool                      | Demo             |
+| -------------------------------------------- | ------------------------- | ---------------- |
+| Shared across pages, must survive navigation | store-owned mutation      | favorites        |
+| Single surface, dies with the component      | `useOptimistic`           | review "helpful" |
+| Needs the server's answer anyway (new ID)    | form action + `updateTag` | add review       |
 
 **Store-owned ([stores/favorites-store.ts](stores/favorites-store.ts)):** the
 store flips state optimistically, calls the Server Action, and reconciles or
@@ -321,7 +322,7 @@ transition; the action's `updateTag` refresh delivers the new canonical
 value. Failure auto-reverts and the thrown error surfaces at the segment
 error boundary — never a silent `console.error`
 ([tests/reviews.test.tsx](tests/reviews.test.tsx)). Far less machinery than
-the store — which is exactly why it's the right tool *only* when nothing else
+the store — which is exactly why it's the right tool _only_ when nothing else
 needs the state. Maintaining both patterns for the same entity is how two
 surfaces drift apart mid-flight.
 
@@ -351,7 +352,7 @@ the action (public endpoint), not just in the UI.
 ### 10. Testing: integration-first, mock only at real boundaries
 
 **Vitest + Testing Library + MSW** ([tests/](tests/)): components are rendered
-with their *real* store, *real* provider, and the *real* server-action module;
+with their _real_ store, _real_ provider, and the _real_ server-action module;
 only two kinds of things are replaced:
 
 - The network — MSW intercepts the actual HTTP requests
@@ -386,7 +387,7 @@ and each test restores the state it mutates.
 jsdom; asserting on store internals instead of rendered output; e2e against a
 dev server.
 
-(When the upstream boundary *isn't* interceptable HTTP, the seam moves inward
+(When the upstream boundary _isn't_ interceptable HTTP, the seam moves inward
 — see §16 for the module-seam alternative.)
 
 ### 11. Assorted gotchas demonstrated
@@ -397,7 +398,7 @@ dev server.
 - **Route handlers can be statically prerendered:** a GET handler that reads
   nothing from the request is evaluated at build time and serves a frozen
   response forever. Under `cacheComponents`, `dynamic = "force-dynamic"` is
-  *rejected*; the fix is `await connection()`
+  _rejected_; the fix is `await connection()`
   ([app/api/stats/route.ts](app/api/stats/route.ts)).
 - **Error boundaries per segment:** [app/products/error.tsx](app/products/error.tsx)
   keeps a data-layer failure from blanking the whole app and offers a retry —
@@ -457,7 +458,7 @@ that file is the spec a Redis port has to pass.
 performance-based clock that drifts from the system clock over process
 lifetime (dramatic under WSL2 — ~900ms/minute). Comparing those stamps
 against your own `Date.now()` invalidation timestamps makes entries written
-just before an invalidation look *newer* than it and wrongly survive. A
+just before an invalidation look _newer_ than it and wrongly survive. A
 handler must normalize everything to one clock (see the `timestamp:` comment
 in `set`). This is not just a custom-handler concern: the **built-in
 in-memory handler exhibits the same failure** here — the single-instance e2e
@@ -487,7 +488,7 @@ fresh, plus the 401 on a bad secret.
 
 ### 14. The fully-dynamic regime: refresh(), background jobs, focus refetch
 
-Some state is uncached *by nature* — job status, per-user data — and for it
+Some state is uncached _by nature_ — job status, per-user data — and for it
 tag invalidation has nothing to do; the tool is re-rendering. Three patterns
 ([components/refreshers.tsx](components/refreshers.tsx),
 [e2e/jobs.spec.ts](e2e/jobs.spec.ts)):
@@ -500,7 +501,7 @@ tag invalidation has nothing to do; the tool is re-rendering. Three patterns
   state is per-user, like favorites: the panel renders only for a session,
   and the job is keyed by user on the service.
 - **Capped polling for background jobs:** the server renders
-  `PendingAutoRefresher` *only while the job is pending*
+  `PendingAutoRefresher` _only while the job is pending_
   ([components/restock-panel.tsx](components/restock-panel.tsx)), so polling
   starts and stops as a function of server state, transition-wrapped so it
   never clobbers in-flight UI, and capped so a stuck job can't poll forever.
@@ -509,7 +510,7 @@ tag invalidation has nothing to do; the tool is re-rendering. Three patterns
   uncached data up to date.
 
 Honesty note: §4 calls client-side `router.refresh()` after a mutation an
-anti-pattern *when tags can do the job in one round trip*. In this regime —
+anti-pattern _when tags can do the job in one round trip_. In this regime —
 uncached data, out-of-band writes — refresh **is** the correct tool. Also
 remember `refresh()`/`router.refresh()` re-runs server components but does
 NOT expire `'use cache'` entries; cached reads stay cached.
@@ -559,6 +560,48 @@ even though its own boundary is HTTP:
 **Anti-pattern avoided:** per-test, per-module `vi.mock()`/`jest.mock()`
 sprawl — dozens of ad-hoc stubs that drift independently and let tests pass
 while the real integration is broken.
+
+### 17. Observability: traces, fetch logs, web vitals
+
+Three layers, from dev-loop to production, all opt-in and zero-cost when
+off:
+
+- **Fetch logging in dev** ([next.config.ts](next.config.ts)):
+  `logging: { fetches: { fullUrl: true } }` prints every server-side fetch
+  with its cache status in the dev console — the fastest answer to "did that
+  hit the cache?".
+- **OpenTelemetry via `instrumentation.ts`**
+  ([instrumentation.ts](instrumentation.ts)): the stable server-startup hook
+  registers `@vercel/otel`. Next then emits spans for rendering and fetches;
+  [lib/auth.ts](lib/auth.ts) adds a custom `session.lookup` span — which
+  doubles as proof of §3's dedup: one span per request regardless of call
+  sites. Two modes: `OTEL_CONSOLE=1 pnpm dev` prints spans to the console
+  (zero infra), or set `OTEL_EXPORTER_OTLP_ENDPOINT` for a real collector.
+  Custom spans use the no-op tracer when nothing is registered — they cost
+  nothing off.
+- **Web vitals** ([components/web-vitals.tsx](components/web-vitals.tsx)):
+  `useReportWebVitals` in the root layout reports LCP/CLS/INP as users
+  actually experienced them; the demo logs, production would
+  `sendBeacon` to an analytics endpoint (it survives page unload — a plain
+  `fetch` there gets cancelled).
+
+The demo-grade counterpart is `/api/stats` on the simulated service —
+request counters that make cache hits externally observable; the e2e suite
+asserts against them.
+
+### 18. CI and repo hygiene
+
+- **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the
+  full matrix on every push and PR: format check, lint, `next typegen` +
+  typecheck for both apps, the Vitest projects, and both Playwright suites.
+  A reference whose claims aren't enforced decays into wishes; CI is what
+  turns "everything is tested" into a property.
+- **Formatting is a tool, not a discipline**: Prettier (default config —
+  the whole point is not having opinions), `pnpm format:check` in CI, and a
+  pre-commit hook (simple-git-hooks + lint-staged) that formats and lints
+  staged files so unformatted code can't land in the first place.
+- `packageManager` is pinned so CI, hooks, and every teammate resolve the
+  same pnpm.
 
 ## Where to poke around first
 

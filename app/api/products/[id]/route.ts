@@ -8,7 +8,8 @@ export async function GET(_request: NextRequest, { params }: Context) {
   await delay();
   const { id } = await params;
   const product = products.find((p) => p.id === id);
-  if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!product)
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(product);
 }
 
@@ -19,7 +20,8 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   await delay();
   const { id } = await params;
   const product = products.find((p) => p.id === id);
-  if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!product)
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await request.json();
   if (typeof body.price === "number") product.price = body.price;
   return NextResponse.json(product);

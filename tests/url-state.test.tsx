@@ -2,7 +2,10 @@
 // are on the URL updates the component emits, not on internals.
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { withNuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing";
+import {
+  withNuqsTestingAdapter,
+  type UrlUpdateEvent,
+} from "nuqs/adapters/testing";
 import { describe, expect, it, vi } from "vitest";
 import { Pagination } from "@/components/pagination";
 import { ProductFilters } from "@/components/product-filters";

@@ -9,7 +9,10 @@ export const server = setupServer(
   ),
   http.post(`${API}/users/u1/favorites`, async ({ request }) => {
     await delay(50);
-    const body = (await request.json()) as { productId: string; favorite: boolean };
+    const body = (await request.json()) as {
+      productId: string;
+      favorite: boolean;
+    };
     return HttpResponse.json(body);
   }),
   http.post(`${API}/products/p1/reviews`, async ({ request }) => {

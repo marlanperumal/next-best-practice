@@ -36,15 +36,20 @@ test("cache entries written by one instance are served by the other", async ({
   request,
 }) => {
   const readProductHits = async () =>
-    ((await (await request.get(`${A}/api/stats`)).json()).product as number) ?? 0;
+    ((await (await request.get(`${A}/api/stats`)).json()).product as number) ??
+    0;
 
   // Warm p11's detail on A (writes the getProduct entry to shared storage).
   await page.goto(`${A}/products/p11`);
-  await expect(page.getByRole("heading", { name: /Racing Wheel/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Racing Wheel/ }),
+  ).toBeVisible();
 
   const before = await readProductHits();
   await page.goto(`${B}/products/p11`);
-  await expect(page.getByRole("heading", { name: /Racing Wheel/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Racing Wheel/ }),
+  ).toBeVisible();
   const after = await readProductHits();
 
   expect(after - before).toBe(0);

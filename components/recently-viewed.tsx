@@ -34,7 +34,13 @@ export function RecentlyViewed() {
   );
 }
 
-export function RecordRecentlyViewed({ id, name }: { id: string; name: string }) {
+export function RecordRecentlyViewed({
+  id,
+  name,
+}: {
+  id: string;
+  name: string;
+}) {
   const record = useRecentlyViewedStore((s) => s.record);
 
   useEffect(() => {

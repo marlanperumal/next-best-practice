@@ -1,0 +1,45 @@
+# The enforcement of everything the README claims: every push runs the full
+# verification matrix — formatting, lint, both apps' typechecks, the Vitest
+# projects, and both Playwright suites (single-instance and the two-instance
+# shared-cache proof).
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # reads packageManager from package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm format:check
+      - run: pnpm lint
+      # Generated route types (PageProps, LayoutProps) don't exist on a
+      # fresh checkout; typegen creates them without a full build.
+      - run: pnpm exec next typegen
+      - run: pnpm --filter legacy-cache exec next typegen
+      - run: pnpm typecheck
+      - run: pnpm --filter legacy-cache typecheck
+
+      - run: pnpm test
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e:all
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

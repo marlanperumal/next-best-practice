@@ -7,9 +7,17 @@ import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 
 type Handler = {
-  get: (key: string, softTags: string[]) => Promise<undefined | { revalidate: number; value: ReadableStream<Uint8Array> }>;
+  get: (
+    key: string,
+    softTags: string[],
+  ) => Promise<
+    undefined | { revalidate: number; value: ReadableStream<Uint8Array> }
+  >;
   set: (key: string, entry: Promise<object>) => Promise<void>;
-  updateTags: (tags: string[], durations?: { expire?: number }) => Promise<void>;
+  updateTags: (
+    tags: string[],
+    durations?: { expire?: number },
+  ) => Promise<void>;
   getExpiration: (tags: string[]) => Promise<number>;
   refreshTags: () => Promise<void>;
 };
@@ -17,7 +25,9 @@ type Handler = {
 let handler: Handler;
 
 beforeAll(async () => {
-  process.env.CACHE_HANDLER_DIR = await mkdtemp(join(tmpdir(), "cache-handler-"));
+  process.env.CACHE_HANDLER_DIR = await mkdtemp(
+    join(tmpdir(), "cache-handler-"),
+  );
   handler = (await import("../cache-handlers/file-handler.cjs")).default;
 });
 
@@ -100,8 +110,12 @@ describe("file cache handler", () => {
     await handler.set("key:soft", makeEntry(["t:other"]));
     await sleep(5);
     await handler.updateTags(["_N_T_/products/p1"]);
-    expect(await handler.get("key:soft", ["_N_T_/products/p1"])).toBeUndefined();
-    expect(await handler.getExpiration(["_N_T_/products/p1"])).toBeGreaterThan(0);
+    expect(
+      await handler.get("key:soft", ["_N_T_/products/p1"]),
+    ).toBeUndefined();
+    expect(await handler.getExpiration(["_N_T_/products/p1"])).toBeGreaterThan(
+      0,
+    );
     expect(await handler.getExpiration(["t:never-touched"])).toBe(0);
   });
 });

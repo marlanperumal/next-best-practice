@@ -51,7 +51,10 @@ export async function addReview(
       ok: false,
       errors: z.flattenError(parsed.error).fieldErrors,
       // Echo values back so the form can repopulate after React's auto-reset.
-      values: { author: String(raw.author ?? ""), body: String(raw.body ?? "") },
+      values: {
+        author: String(raw.author ?? ""),
+        body: String(raw.body ?? ""),
+      },
     };
   }
   const { productId, ...review } = parsed.data;

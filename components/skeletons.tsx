@@ -7,7 +7,10 @@ export function ProductListSkeleton() {
     <ul role="status" aria-label="Loading products">
       {Array.from({ length: 5 }, (_, i) => (
         <li key={i}>
-          <span className="skeleton" style={{ width: `${11 + (i % 3) * 2}em` }} />
+          <span
+            className="skeleton"
+            style={{ width: `${11 + (i % 3) * 2}em` }}
+          />
         </li>
       ))}
     </ul>

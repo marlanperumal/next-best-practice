@@ -11,7 +11,14 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body style={{ fontFamily: "system-ui", maxWidth: "40rem", margin: "0 auto", padding: "1rem" }}>
+      <body
+        style={{
+          fontFamily: "system-ui",
+          maxWidth: "40rem",
+          margin: "0 auto",
+          padding: "1rem",
+        }}
+      >
         <nav>
           <Link href="/">Home</Link> <Link href="/products">Products</Link>
         </nav>

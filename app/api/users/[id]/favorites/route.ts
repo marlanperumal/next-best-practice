@@ -21,7 +21,10 @@ export async function POST(request: NextRequest, { params }: Context) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   const body = await request.json();
-  const { productId, favorite } = body as { productId: string; favorite: boolean };
+  const { productId, favorite } = body as {
+    productId: string;
+    favorite: boolean;
+  };
   const current = favoriteIds[id] ?? [];
   favoriteIds[id] = favorite
     ? [...new Set([...current, productId])]

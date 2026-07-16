@@ -8,7 +8,8 @@ export async function GET(request: NextRequest, { params }: Context) {
   await delay();
   const { id } = await params;
   const userId = request.nextUrl.searchParams.get("userId");
-  if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+  if (!userId)
+    return NextResponse.json({ error: "userId required" }, { status: 400 });
   return NextResponse.json(getRestock(userId, id));
 }
 
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest, { params }: Context) {
   await delay();
   const { id } = await params;
   const body = (await request.json()) as { userId?: string };
-  if (!body.userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+  if (!body.userId)
+    return NextResponse.json({ error: "userId required" }, { status: 400 });
   return NextResponse.json(startRestock(body.userId, id), { status: 201 });
 }

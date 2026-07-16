@@ -49,7 +49,11 @@ async function ProductList({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (page > totalPages) {
     redirect(
-      serializeProductListParams("/products", { category, q, page: totalPages }),
+      serializeProductListParams("/products", {
+        category,
+        q,
+        page: totalPages,
+      }),
     );
   }
 
@@ -59,9 +63,8 @@ async function ProductList({
       <ul>
         {items.map((product) => (
           <li key={product.id}>
-            <Link href={`/products/${product.id}`}>{product.name}</Link>{" "}
-            (${product.price}){" "}
-            {user && <FavoriteButton productId={product.id} />}
+            <Link href={`/products/${product.id}`}>{product.name}</Link> ($
+            {product.price}) {user && <FavoriteButton productId={product.id} />}
           </li>
         ))}
       </ul>

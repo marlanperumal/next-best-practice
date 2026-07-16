@@ -4,7 +4,9 @@ test("adding a review appears in the action's own response (updateTag)", async (
   page,
 }) => {
   await page.goto("/products/p5?tab=reviews");
-  await expect(page.getByText("Stunning picture in a small room.")).toBeVisible();
+  await expect(
+    page.getByText("Stunning picture in a small room."),
+  ).toBeVisible();
 
   await page.getByLabel("Name").fill("Zoe");
   await page.getByLabel("Rating").selectOption("4");

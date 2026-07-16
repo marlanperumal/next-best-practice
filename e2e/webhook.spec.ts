@@ -37,5 +37,8 @@ test("backend-originated write becomes visible via webhook revalidation", async 
 
   // Restore the seed price for other tests.
   await request.patch("/api/products/p6", { data: { price: 159 } });
-  await request.post("/webhooks/revalidate", { data: { tag: "products" }, headers: SECRET });
+  await request.post("/webhooks/revalidate", {
+    data: { tag: "products" },
+    headers: SECRET,
+  });
 });

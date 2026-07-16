@@ -45,7 +45,11 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
     return { failed: true };
   }
   render() {
-    return this.state.failed ? <p role="alert">Something broke</p> : this.props.children;
+    return this.state.failed ? (
+      <p role="alert">Something broke</p>
+    ) : (
+      this.props.children
+    );
   }
 }
 
@@ -81,6 +85,8 @@ describe("HelpfulButton (useOptimistic)", () => {
 
     // The thrown action reaches the error boundary (in the app,
     // app/products/error.tsx) — never a silent console-only failure.
-    expect(await screen.findByRole("alert")).toHaveTextContent("Something broke");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Something broke",
+    );
   });
 });

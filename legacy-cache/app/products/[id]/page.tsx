@@ -35,7 +35,8 @@ export default async function ProductPage({
       </p>
       <h2>
         Reviews{" "}
-        {summary.count > 0 && `(${summary.count}, avg ${summary.average?.toFixed(1)})`}
+        {summary.count > 0 &&
+          `(${summary.count}, avg ${summary.average?.toFixed(1)})`}
       </h2>
       {reviews.length === 0 ? (
         <p>No reviews yet.</p>
@@ -47,7 +48,10 @@ export default async function ProductPage({
               {/* No client components in this app: a plain form action.
                   The action's revalidateTag purges the Data Cache and this
                   ISR page, and the response shows the new count. */}
-              <form action={markHelpful.bind(null, id, review.id)} style={{ display: "inline" }}>
+              <form
+                action={markHelpful.bind(null, id, review.id)}
+                style={{ display: "inline" }}
+              >
                 <button>Helpful ({review.helpful})</button>
               </form>
             </li>

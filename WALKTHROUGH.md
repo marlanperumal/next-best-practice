@@ -8,7 +8,7 @@ another window.
 ## Before you start
 
 Run the app and sign in — most patterns need a session, and the service's
-400 ms artificial latency is what makes streaming and optimistic UI *visible*.
+400 ms artificial latency is what makes streaming and optimistic UI _visible_.
 
 ```bash
 pnpm dev                          # app + simulated external API on :3000
@@ -22,15 +22,16 @@ movement = served from cache.**
 
 ## Contents
 
-| | | |
-| --- | --- | --- |
-| **Part 1 · Foundations** | [§1 Server components by default](#1-server-components-by-default-client-components-at-the-leaves) · [§2 Layout = state lifetime](#2-layout-placement-decides-state-lifetime) · [§3 Per-user data & React.cache](#3-per-user-data-a-session-dal-deduped-with-reactcache) | |
-| **Part 2 · Caching & streaming** | [§4 'use cache' + tags](#4-use-cache--tags-and-invalidating-in-the-mutation) · [§5 Streaming & PPR](#5-streaming-with-suspense-and-partial-prerendering) | |
-| **Part 3 · URL state** | [§6 URL as state](#6-filters-pagination-and-tabs-live-in-the-url) | |
-| **Part 4 · Client state & mutations** | [§7 Two zustand lifetimes](#7-two-zustand-stores-two-lifetimes) · [§8 Optimistic UI, three ways](#8-optimistic-ui-a-decision-rule-demonstrated-three-ways) · [§9 Forms](#9-form-mutations-with-useactionstate) | |
-| **Part 5 · Operating the cache** | [§12 Shared cache handler](#12-scaling-use-cache-past-one-instance-a-custom-cache-handler) · [§13 Webhook revalidation](#13-webhook-revalidation-for-writes-you-didnt-make) · [§14 refresh() & background jobs](#14-the-fully-dynamic-regime-refresh-background-jobs-focus-refetch) | |
-| **Part 6 · Surfaces & gotchas** | [§15 Failure & waiting surfaces](#15-failure-and-waiting-surfaces) · [§11 Gotcha reel](#11-the-gotcha-reel) | |
-| **Part 7 · Testing** | [§10/16 Testing at the boundary](#1016-integration-first-mocked-at-the-boundary--and-the-seam-for-when-you-cant) · [Appendix: the legacy model](#appendix--the-legacy-model-mapped) | |
+|                                       |                                                                                                                                                                                                                                                                                     |     |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| **Part 1 · Foundations**              | [§1 Server components by default](#1-server-components-by-default-client-components-at-the-leaves) · [§2 Layout = state lifetime](#2-layout-placement-decides-state-lifetime) · [§3 Per-user data & React.cache](#3-per-user-data-a-session-dal-deduped-with-reactcache)            |     |
+| **Part 2 · Caching & streaming**      | [§4 'use cache' + tags](#4-use-cache--tags-and-invalidating-in-the-mutation) · [§5 Streaming & PPR](#5-streaming-with-suspense-and-partial-prerendering)                                                                                                                            |     |
+| **Part 3 · URL state**                | [§6 URL as state](#6-filters-pagination-and-tabs-live-in-the-url)                                                                                                                                                                                                                   |     |
+| **Part 4 · Client state & mutations** | [§7 Two zustand lifetimes](#7-two-zustand-stores-two-lifetimes) · [§8 Optimistic UI, three ways](#8-optimistic-ui-a-decision-rule-demonstrated-three-ways) · [§9 Forms](#9-form-mutations-with-useactionstate)                                                                      |     |
+| **Part 5 · Operating the cache**      | [§12 Shared cache handler](#12-scaling-use-cache-past-one-instance-a-custom-cache-handler) · [§13 Webhook revalidation](#13-webhook-revalidation-for-writes-you-didnt-make) · [§14 refresh() & background jobs](#14-the-fully-dynamic-regime-refresh-background-jobs-focus-refetch) |     |
+| **Part 6 · Surfaces & gotchas**       | [§15 Failure & waiting surfaces](#15-failure-and-waiting-surfaces) · [§11 Gotcha reel](#11-the-gotcha-reel)                                                                                                                                                                         |     |
+| **Part 7 · Testing**                  | [§10/16 Testing at the boundary](#1016-integration-first-mocked-at-the-boundary--and-the-seam-for-when-you-cant) · [Appendix: the legacy model](#appendix--the-legacy-model-mapped)                                                                                                 |     |
+| **Part 8 · Observability & CI**       | [§17 Traces, fetch logs, web vitals](#17-traces-fetch-logs-and-web-vitals) · [§18 CI & repo hygiene](#18-ci-and-repo-hygiene)                                                                                                                                                       |     |
 
 ---
 
@@ -46,7 +47,7 @@ Files: [app/products/page.tsx](app/products/page.tsx) ·
 [lib/api/client.ts](lib/api/client.ts)
 
 **What:** pages and layouts are server components that fetch data and pass it
-*down* as props; `"use client"` appears only on small interactive leaves (a
+_down_ as props; `"use client"` appears only on small interactive leaves (a
 button, a filter bar). The data layer imports `server-only`, which turns any
 accidental client-side import into a build error.
 
@@ -64,6 +65,7 @@ import "server-only";
 
 > [!TIP]
 > **See it live**
+>
 > 1. Open `localhost:3000/products`, then View Source (not the inspector —
 >    the raw HTML). The product names are already in the document: they were
 >    rendered on the server.
@@ -85,11 +87,11 @@ import "server-only";
 Files: [app/products/layout.tsx](app/products/layout.tsx)
 
 **What:** the favorites store provider lives in `app/products/layout.tsx` —
-not in a page, not in the root layout. Layouts do *not* re-render when you
+not in a page, not in the root layout. Layouts do _not_ re-render when you
 navigate between their children, so the same store instance backs the list
 and every detail page.
 
-**Why:** where you mount a provider *is* a decision about how long its state
+**Why:** where you mount a provider _is_ a decision about how long its state
 lives. Layout-level = survives navigation within the section. Page-level =
 dies on every navigation. Root-level = would force a per-user fetch onto
 every page including static ones.
@@ -101,8 +103,10 @@ async function WithFavorites({ children }) {
   const initialFavoriteIds = user ? await getFavoriteIds(user.id) : [];
   return (
     // key: remount (= reset all client state) when the user changes
-    <FavoritesStoreProvider key={user?.id ?? "signed-out"}
-                            initialFavoriteIds={initialFavoriteIds}>
+    <FavoritesStoreProvider
+      key={user?.id ?? "signed-out"}
+      initialFavoriteIds={initialFavoriteIds}
+    >
       <VisibilityRefetcher />
       {children}
     </FavoritesStoreProvider>
@@ -112,6 +116,7 @@ async function WithFavorites({ children }) {
 
 > [!TIP]
 > **See it live**
+>
 > 1. Sign in as Alice, star a product on the list, click through to its
 >    detail page: the star is already filled, instantly, with no network
 >    request — same store, still alive.
@@ -131,7 +136,7 @@ Files: [lib/auth.ts](lib/auth.ts) · [e2e/auth.spec.ts](e2e/auth.spec.ts)
 **What:** one 10-line module owns the question "who is signed in?" — it reads
 the cookie, looks the user up, and is wrapped in `React.cache` so every
 caller in one request shares a single lookup. Per-user reads are deliberately
-*not* in the shared cache.
+_not_ in the shared cache.
 
 **Why:** the nav, the favorites layout, and the product list all need the
 current user. Without request-level dedup that's three sequential upstream
@@ -150,6 +155,7 @@ export const getCurrentUser = cache(async () => {
 
 > [!TIP]
 > **See it live**
+>
 > 1. Sign in as Alice. Note the `user` counter:
 >    `curl -s localhost:3000/api/stats`.
 > 2. Load `/products?category=audio` — a page where at least three components
@@ -178,7 +184,7 @@ Files: [lib/api/client.ts](lib/api/client.ts) ·
 
 **What:** with Cache Components enabled, `fetch` is uncached by default.
 Shared, same-for-everyone data opts in with the `'use cache'` directive plus
-a lifetime and tags. Mutations expire those tags *inside the Server Action*,
+a lifetime and tags. Mutations expire those tags _inside the Server Action_,
 and `updateTag` refreshes within the same round trip — read-your-own-writes.
 
 **Why:** caching-by-default is how stale-data bugs happen; explicit opt-in
@@ -202,13 +208,14 @@ updateTag(`reviews:${productId}`); // expire + refresh in THIS request
 
 > [!TIP]
 > **See it live**
+>
 > 1. Open a product's reviews tab, then reload a few times. Curl the stats
 >    between reloads: the `reviews` counter doesn't move — cache hits.
-> 2. Add a review. It appears immediately — *and* no reload happened: the
+> 2. Add a review. It appears immediately — _and_ no reload happened: the
 >    action's `updateTag` returned the refreshed list in its own response.
 >    The stats counter ticked exactly once.
 > 3. Contrast: toggle a favorite. No tag is touched — favorites are uncached
->    per-user data, so there is *nothing to invalidate*. Knowing when not to
+>    per-user data, so there is _nothing to invalidate_. Knowing when not to
 >    invalidate is part of the model.
 
 > [!CAUTION]
@@ -227,17 +234,18 @@ Files: [app/products/page.tsx](app/products/page.tsx) ·
 **What:** the page component stays synchronous and composes async server
 components under `Suspense`. The static shell (headings, filters, tabs) is
 prerendered at build time; each dynamic hole streams in when its data
-resolves. Independent holes are *siblings*, so they fetch in parallel.
+resolves. Independent holes are _siblings_, so they fetch in parallel.
 
 **Why:** the alternative is that the slowest fetch decides when the user sees
-*anything*. Streaming turns one 800 ms blank page into an instant shell plus
+_anything_. Streaming turns one 800 ms blank page into an instant shell plus
 content arriving as it's ready — and sibling boundaries mean the product info
 and the tab panel race instead of queueing.
 
 ```tsx
 // app/products/page.tsx
 export default function ProductsPage({ searchParams }: PageProps<"/products">) {
-  return (      // page itself is sync ⇒ filters are in the static shell
+  return (
+    // page itself is sync ⇒ filters are in the static shell
     <>
       <ProductFilters />
       <Suspense fallback={<ProductListSkeleton />}>
@@ -250,6 +258,7 @@ export default function ProductsPage({ searchParams }: PageProps<"/products">) {
 
 > [!TIP]
 > **See it live**
+>
 > 1. Hard-reload `/products`. The heading and filter controls paint
 >    immediately; the skeleton pulses for ~400 ms (the service latency); the
 >    list streams in. The filters were usable the whole time.
@@ -261,7 +270,7 @@ export default function ProductsPage({ searchParams }: PageProps<"/products">) {
 
 > [!CAUTION]
 > **Without it** — one `await searchParams` at the top of the page pulls
-> *everything* — filters included — out of the static shell: blank page until
+> _everything_ — filters included — out of the static shell: blank page until
 > the slowest fetch finishes. Nesting the reviews fetch inside the product
 > fetch (instead of sibling boundaries) makes them sequential: 400 ms +
 > 400 ms instead of max(400, 400). Waterfalls are invisible on localhost and
@@ -286,7 +295,7 @@ URL-building (`createSerializer`). `shallow: false` re-runs the server
 components that read the params; `useTransition` exposes the round trip as a
 pending state.
 
-**Why:** the test is one question: *would a pasted link reproduce this view?*
+**Why:** the test is one question: _would a pasted link reproduce this view?_
 `useState` fails it — state dies on reload, back button breaks, links lie.
 And a single shared parser means the client and server can never disagree
 about what `?page=` means.
@@ -294,17 +303,17 @@ about what `?page=` means.
 ```tsx
 // components/product-filters.tsx
 const [{ category, q }, setParams] = useQueryStates(productListParams, {
-  shallow: false,   // tell the server; re-render the RSC tree
-  startTransition,  // surface the round trip as isPending
+  shallow: false, // tell the server; re-render the RSC tree
+  startTransition, // surface the round trip as isPending
 });
 // on change: reset the page + debounce keystrokes
-setParams({ q: value || null, page: null },
-          { limitUrlUpdates: debounce(300) });
+setParams({ q: value || null, page: null }, { limitUrlUpdates: debounce(300) });
 ```
 
 > [!TIP]
 > **See it live**
-> 1. Filter to *audio*, search "mic", go to a detail page's reviews tab.
+>
+> 1. Filter to _audio_, search "mic", go to a detail page's reviews tab.
 >    Copy the URL into a private window: the exact view reproduces, tab and
 >    all.
 > 2. Type in the search box and watch the URL: it updates once, ~300 ms after
@@ -335,18 +344,18 @@ Files: [stores/favorites-store.ts](stores/favorites-store.ts) ·
 [stores/favorites-store-provider.tsx](stores/favorites-store-provider.tsx) ·
 [stores/recently-viewed-store.ts](stores/recently-viewed-store.ts)
 
-**What:** the favorites store is a *factory* instantiated once per provider
+**What:** the favorites store is a _factory_ instantiated once per provider
 mount and reached through context — never a module-level singleton — and it
-*reconciles*: every server re-render merges the fresh snapshot in, with
+_reconciles_: every server re-render merges the fresh snapshot in, with
 in-flight optimistic values protected. The recently-viewed store is the
 opposite: module-level, client-only, persisted to localStorage with
 `skipHydration`.
 
-**Why:** a module-level store on the server is shared by *all requests* —
+**Why:** a module-level store on the server is shared by _all requests_ —
 Alice's favorites SSR-rendered into Bob's HTML. Per-request creation exists
 for exactly that reason. The recently-viewed store never exists on the
-server, so a singleton is safe there — the distinction is *where the state
-originates*, not taste.
+server, so a singleton is safe there — the distinction is _where the state
+originates_, not taste.
 
 ```tsx
 // stores/favorites-store-provider.tsx
@@ -360,9 +369,10 @@ useEffect(() => {
 
 > [!TIP]
 > **See it live**
+>
 > 1. Visit three product pages, reload the list page: "Recently viewed"
 >    survives the reload (localStorage), and there's no hydration warning in
->    the console — storage is only read *after* mount.
+>    the console — storage is only read _after_ mount.
 > 2. The out-of-band merge, end to end: as Alice, open a product you haven't
 >    starred, then from a terminal simulate "another device":
 >    ```bash
@@ -370,8 +380,8 @@ useEffect(() => {
 >      -H "Content-Type: application/json" \
 >      -d '{"productId":"p9","favorite":true}'
 >    ```
->    Nothing changes on screen — until any server re-render (click *Request
->    restock*, or reload): the star fills in. The store adopted the server
+>    Nothing changes on screen — until any server re-render (click _Request
+>    restock_, or reload): the star fills in. The store adopted the server
 >    snapshot.
 
 > [!CAUTION]
@@ -388,16 +398,16 @@ Files: [stores/favorites-store.ts](stores/favorites-store.ts) ·
 [components/helpful-button.tsx](components/helpful-button.tsx) ·
 [components/add-review-form.tsx](components/add-review-form.tsx)
 
-| State is… | Tool | Demo |
-| --- | --- | --- |
-| Shared across pages, must survive navigation | store-owned mutation | favorites |
-| Single surface, dies with the component | `useOptimistic` | review "helpful" |
-| Needs the server's answer anyway (new ID) | form action + `updateTag` | add review |
+| State is…                                    | Tool                      | Demo             |
+| -------------------------------------------- | ------------------------- | ---------------- |
+| Shared across pages, must survive navigation | store-owned mutation      | favorites        |
+| Single surface, dies with the component      | `useOptimistic`           | review "helpful" |
+| Needs the server's answer anyway (new ID)    | form action + `updateTag` | add review       |
 
 **Why the store owns the favorites mutation:** the promise belongs to the
 store — whose lifetime is the layout's, not the button's — so navigating away
 mid-request can't orphan it. A per-id version counter makes rapid toggles
-settle on the *last* click, and failures revert. `useOptimistic` is the right
+settle on the _last_ click, and failures revert. `useOptimistic` is the right
 tool only when nothing else needs the state: far less machinery, automatic
 revert, error surfaces at the boundary.
 
@@ -421,7 +431,8 @@ toggle: async (id) => {
 
 > [!TIP]
 > **See it live**
-> 1. Click a star: it flips *instantly*; DevTools Network shows the action
+>
+> 1. Click a star: it flips _instantly_; DevTools Network shows the action
 >    POST still in flight for ~400 ms after.
 > 2. The fire-and-navigate demo: click a star on a detail page and
 >    immediately click "← All products". The list shows the new state; the
@@ -434,8 +445,8 @@ toggle: async (id) => {
 
 > [!CAUTION]
 > **Without it** — component-local optimistic state (`useState` per button)
-> is how the same vote count ends up *diverging between the list card and the
-> detail page mid-flight* — two systems for one entity. No version guard:
+> is how the same vote count ends up _diverging between the list card and the
+> detail page mid-flight_ — two systems for one entity. No version guard:
 > toggle twice quickly and the slow first response overwrites your second
 > click. Component-owned promise + navigation: React cancels nothing, but
 > your reconcile-or-revert callback updates state that no longer exists — the
@@ -461,14 +472,17 @@ one that eats it.
 // components/add-review-form.tsx
 const [state, formAction, pending] = useActionState(addReview, initialState);
 
-<input name="author" defaultValue={state.values?.author} />
-{state.errors?.author && <p role="alert">{state.errors.author[0]}</p>}
+<input name="author" defaultValue={state.values?.author} />;
+{
+  state.errors?.author && <p role="alert">{state.errors.author[0]}</p>;
+}
 ```
 
 > [!TIP]
 > **See it live**
+>
 > 1. On a reviews tab, type a name but leave the review empty; submit. A
->    field error appears *and your name is still in the box*.
+>    field error appears _and your name is still in the box_.
 > 2. Submit a valid review: the form clears (the auto-reset earning its keep)
 >    and the review is already in the list above — that's §4's `updateTag` in
 >    the same response.
@@ -511,10 +525,11 @@ port must pass.
 
 > [!TIP]
 > **See it live**
+>
 > 1. `pnpm e2e:multi` — it boots **two real `next start` processes** sharing
 >    one build and cache directory, then proves both halves: a review added
 >    through instance A appears on instance B's next request (tag
->    propagation), and a page warmed on A renders on B with *zero* upstream
+>    propagation), and a page warmed on A renders on B with _zero_ upstream
 >    requests (entry sharing — the counters prove it).
 > 2. Read `.cache-handler/tags.json` after a run: the invalidation records
 >    the instances coordinate through.
@@ -524,7 +539,7 @@ port must pass.
 > minutes after every edit, depending on which instance they hit. And the war
 > story: the handler initially compared Next's entry timestamps
 > (performance-clock) against its own `Date.now()` — entries written just
-> before an invalidation looked *newer* than it and survived. It only failed
+> before an invalidation looked _newer_ than it and survived. It only failed
 > on servers ~a minute old, never in fresh test runs — and Next's own
 > built-in handler exhibits the same drift failure under WSL2. If
 > invalidations "stop working" only on long-lived processes: it's the clock.
@@ -542,12 +557,13 @@ legal in route handlers (`updateTag` is actions-only).
 
 > [!TIP]
 > **See it live**
+>
 > 1. Note a product's price, then change it behind the app's back:
 >    ```bash
 >    curl -X PATCH localhost:3000/api/products/p6 \
 >      -H "Content-Type: application/json" -d '{"price":179}'
 >    ```
-> 2. Reload the product page: still the old price — *provably stale*, and
+> 2. Reload the product page: still the old price — _provably stale_, and
 >    correctly so; nothing told the app.
 > 3. Deliver the webhook, then reload — new price:
 >    ```bash
@@ -570,10 +586,10 @@ Files: [components/restock-panel.tsx](components/restock-panel.tsx) ·
 [components/refreshers.tsx](components/refreshers.tsx) ·
 [lib/actions.ts](lib/actions.ts)
 
-**What:** some state is uncached *by nature* — job status changes
+**What:** some state is uncached _by nature_ — job status changes
 out-of-band, so there's no tag to expire; the tool is re-rendering. The
 restock action calls `refresh()` (the uncached-data sibling of `updateTag`);
-the server renders a capped poller *only while the job is pending*; a
+the server renders a capped poller _only while the job is pending_; a
 visibility listener refreshes when you return to the tab. Every refresh is
 transition-wrapped so it can't clobber in-flight UI.
 
@@ -582,7 +598,8 @@ transition-wrapped so it can't clobber in-flight UI.
 if (restock.status === "pending") {
   return (
     <p role="status">
-      Restock pending… <PendingAutoRefresher /> {/* exists ⇔ job is pending:
+      Restock pending… <PendingAutoRefresher />{" "}
+      {/* exists ⇔ job is pending:
         polling starts and stops as a function of server state */}
     </p>
   );
@@ -591,13 +608,14 @@ if (restock.status === "pending") {
 
 > [!TIP]
 > **See it live**
-> 1. Signed in, on a product page, click *Request restock*: "Restock
+>
+> 1. Signed in, on a product page, click _Request restock_: "Restock
 >    pending…" appears with no reload — the action's `refresh()` re-rendered
 >    in the same round trip.
 > 2. Wait: at ~4 seconds it flips to "Restock confirmed." on its own. The job
 >    completed server-side at 3 s; the poller's next tick picked it up — then
 >    the poller unmounted, because the server stopped rendering it.
-> 3. Note what a refresh does *not* do: the stats counters for cached reads
+> 3. Note what a refresh does _not_ do: the stats counters for cached reads
 >    don't move. `refresh()` re-runs server components; it does not expire
 >    `'use cache'` data.
 
@@ -606,7 +624,7 @@ if (restock.status === "pending") {
 > reload. The naive fix — a client `setInterval` — never stops: it polls
 > after completion, after navigation, for stuck jobs, forever (hence the cap
 > and the server-controlled mount). And calling `router.refresh()` after
-> *cached*-data mutations is the anti-pattern §4 replaces — it re-renders
+> _cached_-data mutations is the anti-pattern §4 replaces — it re-renders
 > everything and guarantees nothing.
 
 ---
@@ -630,6 +648,7 @@ fallbacks that mirror the shape of incoming content instead of a spinner.
 
 > [!TIP]
 > **See it live**
+>
 > 1. Visit `/products/nope`: a branded page with a way forward, not the
 >    framework's default.
 > 2. Now run `curl -sI localhost:3000/products/nope | head -1` — it's a
@@ -651,15 +670,15 @@ fallbacks that mirror the shape of incoming content instead of a spinner.
 
 Short, sharp, and all encountered for real while building this repo:
 
-| Trap | Symptom | Fix |
-| --- | --- | --- |
-| `params`/`searchParams` are Promises | works in dev, type errors or undefined at build | always `await`; use generated `PageProps` types |
-| Static GET route handlers | endpoint returns a frozen build-time snapshot forever | `await connection()` (segment `dynamic` is rejected under cacheComponents) |
-| nuqs history default | Back button leaves the site instead of un-paginating | `history: "push"` for pagination only |
-| Filter without page reset | filter on page 5 → empty page | write `page: null` in the same update |
-| Performance-clock cache timestamps | invalidations miss recent entries, only on aged processes | normalize to one clock in the handler (§12) |
-| PPR + `notFound()` | missing entities return HTTP 200 | block instead of stream where status codes matter (§15) |
-| persist without `skipHydration` | hydration mismatch warnings, flash of wrong content | read storage after mount; track hydration in the store |
+| Trap                                 | Symptom                                                   | Fix                                                                        |
+| ------------------------------------ | --------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `params`/`searchParams` are Promises | works in dev, type errors or undefined at build           | always `await`; use generated `PageProps` types                            |
+| Static GET route handlers            | endpoint returns a frozen build-time snapshot forever     | `await connection()` (segment `dynamic` is rejected under cacheComponents) |
+| nuqs history default                 | Back button leaves the site instead of un-paginating      | `history: "push"` for pagination only                                      |
+| Filter without page reset            | filter on page 5 → empty page                             | write `page: null` in the same update                                      |
+| Performance-clock cache timestamps   | invalidations miss recent entries, only on aged processes | normalize to one clock in the handler (§12)                                |
+| PPR + `notFound()`                   | missing entities return HTTP 200                          | block instead of stream where status codes matter (§15)                    |
+| persist without `skipHydration`      | hydration mismatch warnings, flash of wrong content       | read storage after mount; track hydration in the store                     |
 
 ---
 
@@ -674,7 +693,7 @@ Files: [tests/favorites.test.tsx](tests/favorites.test.tsx) ·
 [tests/mocks/api-client.mock.ts](tests/mocks/api-client.mock.ts) ·
 [vitest.config.mts](vitest.config.mts)
 
-**What:** component tests render the *real* store, provider, and Server
+**What:** component tests render the _real_ store, provider, and Server
 Action modules; MSW intercepts actual HTTP at the network boundary, with
 `onUnhandledRequest: "error"` so nothing escapes silently. Only framework
 runtime modules (`server-only`, `next/cache`, `next/headers`) are stubbed.
@@ -684,7 +703,7 @@ declared once, with every export typed `typeof import(…)` so contract drift
 fails the compile. Async server components and multi-page flows go to
 Playwright, against a production build.
 
-**Why:** a test that mocks the store, the fetch wrapper, *and* the action
+**Why:** a test that mocks the store, the fetch wrapper, _and_ the action
 tests your mocks' choreography, not your app — it keeps passing while the
 integration is broken. Mocking at the outermost boundary you don't own means
 the favorites test exercises click → optimistic flip → auth check → HTTP POST
@@ -692,6 +711,7 @@ the favorites test exercises click → optimistic flip → auth check → HTTP P
 
 > [!TIP]
 > **See it live**
+>
 > 1. `pnpm test` — 30 tests, ~3 s. Read
 >    [tests/favorites.test.tsx](tests/favorites.test.tsx): the failure-revert
 >    and rapid-toggle race from §8 are asserted against MSW handlers, not
@@ -711,6 +731,71 @@ the favorites test exercises click → optimistic flip → auth check → HTTP P
 
 ---
 
+# Part 8 · Observability & CI
+
+Seeing what the app actually did — and enforcing everything above.
+
+## §17. Traces, fetch logs, and web vitals
+
+Files: [instrumentation.ts](instrumentation.ts) · [lib/auth.ts](lib/auth.ts)
+· [components/web-vitals.tsx](components/web-vitals.tsx) ·
+[next.config.ts](next.config.ts)
+
+**What:** three observability layers, all opt-in. Dev fetch logging prints
+every server-side fetch with its cache status. `instrumentation.ts` (the
+stable server-startup hook) registers OpenTelemetry — Next emits spans for
+rendering and fetches, and the session DAL adds a custom `session.lookup`
+span. `useReportWebVitals` reports LCP/CLS/INP as users experienced them.
+
+**Why:** every caching claim in Parts 2 and 5 is a claim about invisible
+behavior. Traces and fetch logs are how you verify them in production
+instead of trusting them — and the custom span doubles as §3's proof: one
+`session.lookup` per request, no matter how many components asked.
+
+> [!TIP]
+> **See it live**
+>
+> 1. Restart dev and load `/products`: the console prints each upstream
+>    fetch with its full URL and cache status — reload and watch reads
+>    disappear as they become cache hits.
+> 2. `OTEL_CONSOLE=1 pnpm dev`, then load a page while signed in: spans
+>    print to the server console. Find `session.lookup` — exactly one per
+>    request, with a `session.authenticated` attribute.
+> 3. In the browser console (verbose level): `[web-vitals] LCP: … (good)`
+>    lines as you navigate.
+
+> [!CAUTION]
+> **Without it** — "the cache is working" is a belief, not a measurement.
+> Slow requests get debugged by adding `console.log` to production, and the
+> N-fetches-per-request class of bug (§3) ships invisibly because nothing
+> ever counted the fetches.
+
+## §18. CI and repo hygiene
+
+Files: [.github/workflows/ci.yml](.github/workflows/ci.yml) ·
+[package.json](package.json)
+
+**What:** one workflow runs the full verification matrix on every push and
+PR — format check, lint, `next typegen` + typecheck for both apps, both
+Vitest projects, both Playwright suites. Prettier (deliberately default
+config) formats on a pre-commit hook via lint-staged, and `packageManager`
+pins pnpm for CI, hooks, and teammates alike.
+
+> [!TIP]
+> **See it live**
+>
+> 1. Push a branch and open the Actions tab — the matrix is the README's
+>    claims, enforced.
+> 2. Commit a badly formatted file: the pre-commit hook reformats it before
+>    it lands.
+
+> [!CAUTION]
+> **Without it** — the verification suite only runs when someone remembers,
+> which converges on never; formatting becomes review-comment material
+> instead of a tool's job; and the reference slowly stops being true.
+
+---
+
 # Appendix · The legacy model, mapped
 
 Most production apps still run the pre-16 caching model. The workspace app
@@ -719,13 +804,14 @@ the main app and diff the feel.
 
 > [!TIP]
 > **See it live**
+>
 > 1. With the main app on :3000, run `pnpm --filter legacy-cache dev` and
 >    open `localhost:3100/products`.
 > 2. Same catalog, different machinery: per-fetch
 >    `next: { revalidate, tags }`, `unstable_cache` for computed values, a
->    `force-dynamic` route serving *cached* fetches (route dynamism and
+>    `force-dynamic` route serving _cached_ fetches (route dynamism and
 >    response caching are independent axes there), on-demand ISR on the
->    detail page, and a helpful-vote form with *zero* client components.
+>    detail page, and a helpful-vote form with _zero_ client components.
 > 3. The full pattern-by-pattern translation table is in
 >    [legacy-cache/README.md](legacy-cache/README.md) — the Rosetta stone for
 >    migrating either direction.

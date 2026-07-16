@@ -11,7 +11,9 @@ test("filters products via URL state", async ({ page }) => {
   await page.getByRole("searchbox").fill("micro");
   await expect(page).toHaveURL(/q=micro/);
   await expect(page.getByRole("listitem")).toHaveCount(1);
-  await expect(page.getByRole("link", { name: "USB Microphone" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "USB Microphone" }),
+  ).toBeVisible();
 });
 
 test("out-of-range page redirects to the last valid page", async ({ page }) => {
@@ -34,29 +36,45 @@ test("paginates and supports the back button", async ({ page }) => {
 
 test("tab state lives in the URL and survives reload", async ({ page }) => {
   await page.goto("/products/p1");
-  await expect(page.getByText("Closed-back reference headphones.")).toBeVisible();
+  await expect(
+    page.getByText("Closed-back reference headphones."),
+  ).toBeVisible();
 
   await page.getByRole("tab", { name: "reviews" }).click();
   await expect(page).toHaveURL(/tab=reviews/);
-  await expect(page.getByText("Flat response, great for mixing.")).toBeVisible();
+  await expect(
+    page.getByText("Flat response, great for mixing."),
+  ).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("Flat response, great for mixing.")).toBeVisible();
+  await expect(
+    page.getByText("Flat response, great for mixing."),
+  ).toBeVisible();
 });
 
 test("unknown product renders the branded not-found page", async ({ page }) => {
   await page.goto("/products/nope");
   await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Browse products" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Browse products" }),
+  ).toBeVisible();
 });
 
-test("recently viewed is client state persisted across reloads", async ({ page }) => {
+test("recently viewed is client state persisted across reloads", async ({
+  page,
+}) => {
   await page.goto("/products/p1");
-  await expect(page.getByRole("heading", { name: /Studio Headphones/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Studio Headphones/ }),
+  ).toBeVisible();
 
   await page.goto("/products");
-  await expect(page.getByRole("complementary")).toContainText("Studio Headphones");
+  await expect(page.getByRole("complementary")).toContainText(
+    "Studio Headphones",
+  );
 
   await page.reload();
-  await expect(page.getByRole("complementary")).toContainText("Studio Headphones");
+  await expect(page.getByRole("complementary")).toContainText(
+    "Studio Headphones",
+  );
 });

@@ -33,7 +33,9 @@ const entryPath = (cacheKey) =>
 
 async function readTagsFile() {
   try {
-    return new Map(Object.entries(JSON.parse(await fs.readFile(TAGS_FILE, "utf8"))));
+    return new Map(
+      Object.entries(JSON.parse(await fs.readFile(TAGS_FILE, "utf8"))),
+    );
   } catch {
     return new Map();
   }

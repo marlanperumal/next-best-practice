@@ -49,7 +49,9 @@ describe("favorites store", () => {
     expect(detailButton).toHaveAttribute("aria-pressed", "true");
     expect(listButton).toHaveAttribute("aria-busy", "true");
 
-    await waitFor(() => expect(listButton).toHaveAttribute("aria-busy", "false"));
+    await waitFor(() =>
+      expect(listButton).toHaveAttribute("aria-busy", "false"),
+    );
     expect(detailButton).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -66,7 +68,9 @@ describe("favorites store", () => {
     await user.click(listButton);
     expect(listButton).toHaveAttribute("aria-pressed", "true");
 
-    await waitFor(() => expect(listButton).toHaveAttribute("aria-busy", "false"));
+    await waitFor(() =>
+      expect(listButton).toHaveAttribute("aria-busy", "false"),
+    );
     expect(listButton).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -81,11 +85,17 @@ describe("favorites store", () => {
 
   it("does not let a server snapshot clobber an in-flight optimistic toggle", async () => {
     server.use(
-      http.post("http://localhost:3000/api/users/u1/favorites", async ({ request }) => {
-        const body = (await request.json()) as { productId: string; favorite: boolean };
-        await delay(150);
-        return HttpResponse.json(body);
-      }),
+      http.post(
+        "http://localhost:3000/api/users/u1/favorites",
+        async ({ request }) => {
+          const body = (await request.json()) as {
+            productId: string;
+            favorite: boolean;
+          };
+          await delay(150);
+          return HttpResponse.json(body);
+        },
+      ),
     );
     const user = userEvent.setup();
     const { listButton, rerenderWithServerState } = renderButtons([]);
@@ -96,24 +106,34 @@ describe("favorites store", () => {
     // ...but the optimistic value holds.
     expect(listButton).toHaveAttribute("aria-pressed", "true");
 
-    await waitFor(() => expect(listButton).toHaveAttribute("aria-busy", "false"));
+    await waitFor(() =>
+      expect(listButton).toHaveAttribute("aria-busy", "false"),
+    );
     expect(listButton).toHaveAttribute("aria-pressed", "true");
   });
 
   it("settles on the last click when toggled rapidly", async () => {
     server.use(
-      http.post("http://localhost:3000/api/users/u1/favorites", async ({ request }) => {
-        const body = (await request.json()) as { productId: string; favorite: boolean };
-        await delay(150);
-        return HttpResponse.json(body);
-      }),
+      http.post(
+        "http://localhost:3000/api/users/u1/favorites",
+        async ({ request }) => {
+          const body = (await request.json()) as {
+            productId: string;
+            favorite: boolean;
+          };
+          await delay(150);
+          return HttpResponse.json(body);
+        },
+      ),
     );
     const user = userEvent.setup();
     const { listButton } = renderButtons();
 
     await user.click(listButton); // on
     await user.click(listButton); // off again, while the first is in flight
-    await waitFor(() => expect(listButton).toHaveAttribute("aria-busy", "false"));
+    await waitFor(() =>
+      expect(listButton).toHaveAttribute("aria-busy", "false"),
+    );
     expect(listButton).toHaveAttribute("aria-pressed", "false");
   });
 });

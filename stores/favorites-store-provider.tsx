@@ -41,10 +41,14 @@ export function FavoritesStoreProvider({
   );
 }
 
-export function useFavoritesStore<T>(selector: (store: FavoritesStore) => T): T {
+export function useFavoritesStore<T>(
+  selector: (store: FavoritesStore) => T,
+): T {
   const store = useContext(FavoritesStoreContext);
   if (!store) {
-    throw new Error("useFavoritesStore must be used within FavoritesStoreProvider");
+    throw new Error(
+      "useFavoritesStore must be used within FavoritesStoreProvider",
+    );
   }
   return useStore(store, selector);
 }
